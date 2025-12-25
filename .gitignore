@@ -54,3 +54,6 @@ coverage/
 # Misc
 # -----------------------
 *.log
+/helpers
+/helpers/*
+helpers/
