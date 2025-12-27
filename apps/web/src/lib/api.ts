@@ -13,7 +13,9 @@ export class ApiError extends Error {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
-const buildHeaders = (options: RequestInit): HeadersInit => {
+type ApiRequestInit = RequestInit & { timeoutMs?: number };
+
+const buildHeaders = (options: ApiRequestInit): HeadersInit => {
   const headers = new Headers(options.headers ?? {});
 
   if (
@@ -29,14 +31,28 @@ const buildHeaders = (options: RequestInit): HeadersInit => {
 
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit = {},
+  options: ApiRequestInit = {},
 ): Promise<T> {
-  const headers = buildHeaders(options);
+  const { timeoutMs, ...fetchOptions } = options;
+  const headers = buildHeaders(fetchOptions);
+
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  if (timeoutMs && !fetchOptions.signal) {
+    timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
+    signal: fetchOptions.signal ?? controller.signal,
     headers,
     credentials: 'include',
   });
+
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
 
   let data: unknown = undefined;
   if (response.status !== 204) {

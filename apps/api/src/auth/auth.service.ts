@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   ConflictException,
   Injectable,
@@ -11,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 import { UserDto, toUserDto } from '../users/dto/user.dto';
+import { JwtPayload } from './auth.types';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import {
@@ -92,6 +90,31 @@ export class AuthService {
     }
 
     return this.sanitizeUser(user);
+  }
+
+  async refresh(refreshToken?: string | null): Promise<AuthResult> {
+    if (!refreshToken) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    try {
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(
+        refreshToken,
+        {
+          secret: getRefreshTokenSecret(),
+        },
+      );
+
+      const user = await this.usersService.findById(payload.sub);
+      if (!user) {
+        throw new UnauthorizedException('Unauthorized');
+      }
+
+      const tokens = await this.generateTokens(user.id);
+      return { user: this.sanitizeUser(user), tokens };
+    } catch {
+      throw new UnauthorizedException('Unauthorized');
+    }
   }
 
   private sanitizeUser(user: User): UserDto {
