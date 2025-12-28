@@ -45,6 +45,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
     volumes:
       - ./apps/api/prisma:/app/prisma
+      - ./apps/api/uploads:/app/uploads
     ports:
       - "${API_PORT}:3001"
 

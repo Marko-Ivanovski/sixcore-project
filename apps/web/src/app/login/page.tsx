@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { ApiError, loginUser } from '../../lib/auth';
 
+import { useAuth } from '@/context/AuthContext';
+
 export default function LoginPage() {
   return (
     <Suspense fallback={<Fallback />}>
@@ -15,6 +17,7 @@ export default function LoginPage() {
 
 function LoginContent() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') ?? '/';
 
@@ -29,6 +32,7 @@ function LoginContent() {
     setSubmitting(true);
     try {
       await loginUser({ identifier, password });
+      await refreshUser();
       router.replace(redirect);
     } catch (err) {
       if (err instanceof ApiError) {

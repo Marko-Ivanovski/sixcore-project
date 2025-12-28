@@ -12,74 +12,12 @@ const navLinks: NavLink[] = [
 ];
 
 export default function FeedPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [draft, setDraft] = useState('');
 
   const canPost = draft.trim().length > 0 && draft.trim().length <= 280;
 
   return (
     <div className="gradient-bg min-h-screen">
-      <header
-        className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur"
-        itemScope
-        itemType="https://schema.org/WPHeader"
-      >
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-700 transition hover:bg-gray-50 md:hidden"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              aria-label="Toggle navigation"
-            >
-              <div className="space-y-1">
-                <span className="block h-0.5 w-5 bg-gray-800" />
-                <span className="block h-0.5 w-5 bg-gray-800" />
-                <span className="block h-0.5 w-5 bg-gray-800" />
-              </div>
-            </button>
-            <Link href="/" className="text-xl font-semibold text-gray-900">
-              Sixcore
-            </Link>
-          </div>
-
-          <nav
-            className="hidden items-center gap-4 text-sm font-semibold text-gray-700 md:flex"
-            itemScope
-            itemType="https://schema.org/SiteNavigationElement"
-          >
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="hover:text-gray-900">
-                {link.label}
-              </Link>
-            ))}
-            <Link
-              href="/login"
-              className="rounded-full border border-gray-200 px-3 py-1.5 text-gray-900 hover:bg-gray-50"
-            >
-              Log in
-            </Link>
-          </nav>
-        </div>
-        {menuOpen && (
-          <div className="border-t border-gray-200 bg-white px-4 py-3 md:hidden">
-            <nav className="flex flex-col gap-3 text-sm font-semibold text-gray-800">
-              {navLinks.map((link) => (
-                <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>
-                  {link.label}
-                </Link>
-              ))}
-              <Link href="/login" onClick={() => setMenuOpen(false)}>
-                Log in
-              </Link>
-              <Link href="/register" onClick={() => setMenuOpen(false)}>
-                Register
-              </Link>
-            </nav>
-          </div>
-        )}
-      </header>
-
       <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 lg:flex-row lg:gap-6">
         <section className="hidden w-64 shrink-0 pt-2 lg:block">
           <div className="sticky top-20 space-y-3 card p-4">
