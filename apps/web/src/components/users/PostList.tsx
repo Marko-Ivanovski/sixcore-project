@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getUserPosts, PostItem, PostsResponse } from '../../lib/users';
+import { getUserPosts, getTimeline, PostItem } from '../../lib/users';
 
 interface PostListProps {
-  username: string;
+  username?: string; // Optional: if type is 'user'
+  type?: 'user' | 'timeline' | 'following';
 }
 
-export function PostList({ username }: PostListProps) {
+export function PostList({ username, type = 'user' }: PostListProps) {
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
@@ -18,7 +19,15 @@ export function PostList({ username }: PostListProps) {
     setLoading(true);
     try {
       const currentOffset = reset ? 0 : offset;
-      const response = await getUserPosts(username, 20, currentOffset);
+      let response;
+      
+      if (type === 'user' && username) {
+        response = await getUserPosts(username, 20, currentOffset);
+      } else if (type === 'following') {
+         response = await getTimeline(20, currentOffset, 'following');
+      } else {
+        response = await getTimeline(20, currentOffset, 'all');
+      }
       
       if (reset) {
         setPosts(response.items);
@@ -40,7 +49,7 @@ export function PostList({ username }: PostListProps) {
   useEffect(() => {
     fetchPosts(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username]);
+  }, [username, type]);
 
   if (loading && posts.length === 0) {
     return <div className="text-center py-10 text-gray-500">Loading posts...</div>;
@@ -63,6 +72,7 @@ export function PostList({ username }: PostListProps) {
       {posts.map((post) => (
         <div key={post.id} className="bg-white dark:bg-zinc-900 shadow rounded-lg p-6">
            <div className="flex items-start space-x-3">
+             {/* eslint-disable-next-line @next/next/no-img-element */}
              <img 
                src={post.author.avatarUrl || `https://ui-avatars.com/api/?name=${post.author.username}`} 
                alt={post.author.username}
@@ -88,6 +98,7 @@ export function PostList({ username }: PostListProps) {
                
                {post.imageUrl && (
                  <div className="mt-3">
+                   {/* eslint-disable-next-line @next/next/no-img-element */}
                    <img 
                      src={post.imageUrl} 
                      alt="Post content" 

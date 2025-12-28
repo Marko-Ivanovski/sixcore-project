@@ -11,9 +11,12 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   ConflictException,
+  Patch,
+  Body,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UpdateUserDto } from './dto/update-user.dto';
 import type { Request } from 'express';
 
 @Controller('users')
@@ -97,5 +100,24 @@ export class UsersController {
     }
 
     return { isFollowing: false };
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  async patchUser(@Body() dto: UpdateUserDto, @Req() req: Request) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const userId = (req as any).user.sub;
+
+    try {
+      const user = await this.usersService.updateUser(userId, dto);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash, ...result } = user;
+      return result;
+    } catch (error: any) {
+      if (error.message === 'Email already in use' || error.message === 'Username already in use') {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
   }
 }

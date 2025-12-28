@@ -5,7 +5,5 @@ export interface JwtPayload {
 }
 
 export interface AuthRequest extends Request {
-  user?: {
-    userId: string;
-  };
+  user?: JwtPayload;
 }

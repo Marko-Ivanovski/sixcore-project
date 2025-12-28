@@ -64,6 +64,44 @@ export class UsersService {
     return user as UserRecord;
   }
 
+  async updateUser(id: string, data: Partial<UserRecord> & { password?: string }) {
+    const currentUser = await this.findById(id);
+    if (!currentUser) throw new Error('User not found');
+
+    if (data.email && data.email.toLowerCase() !== currentUser.email.toLowerCase()) {
+      const existing = await this.findByEmail(data.email);
+      if (existing) {
+        throw new Error('Email already in use');
+      }
+    }
+
+    if (data.username && data.username.toLowerCase() !== currentUser.username.toLowerCase()) {
+      const existing = await this.findByUsername(data.username);
+      if (existing) {
+        throw new Error('Username already in use');
+      }
+    }
+
+    let passwordHash = undefined;
+    if (data.password) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const bcrypt = require('bcrypt');
+      passwordHash = await bcrypt.hash(data.password, 10);
+    }
+
+    const { password, ...updateData } = data; // remove raw password
+
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        ...updateData,
+        ...(passwordHash ? { passwordHash } : {}),
+      },
+    });
+
+    return user as UserRecord;
+  }
+
   async getProfile(username: string, viewerId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { username: username.toLowerCase() },

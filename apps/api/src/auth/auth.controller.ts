@@ -72,7 +72,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   me(@Req() req: AuthRequest) {
-    const userId = req.user?.userId;
+    const userId = req.user?.sub;
     if (!userId) {
       throw new UnauthorizedException('Unauthorized');
     }

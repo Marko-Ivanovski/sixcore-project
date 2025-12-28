@@ -63,3 +63,25 @@ export async function unfollowUser(username: string): Promise<{ isFollowing: boo
     method: 'DELETE',
   });
 }
+
+export interface UpdateProfileInput {
+  email?: string;
+  password?: string;
+  displayName?: string;
+  bio?: string;
+  avatarUrl?: string;
+}
+
+export async function updateProfile(data: UpdateProfileInput): Promise<UserProfile> {
+  return apiFetch<UserProfile>('/api/users/me', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getTimeline(limit = 20, offset = 0, type: 'all' | 'following' = 'all'): Promise<PostsResponse> {
+  return apiFetch<PostsResponse>(`/api/posts?limit=${limit}&offset=${offset}&type=${type}`);
+}

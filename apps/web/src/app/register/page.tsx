@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { ApiError, registerUser } from '../../lib/auth';
+import { checkPasswordStrength } from '@/utils/validation';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,11 +15,26 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+
+  const handlePasswordChange = (val: string) => {
+    setPassword(val);
+    setPasswordErrors(checkPasswordStrength(val));
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
+    
+    // Final check
+    const currentErrors = checkPasswordStrength(password);
+    if (currentErrors.length > 0) {
+        setSubmitting(false);
+        setPasswordErrors(currentErrors);
+        return;
+    }
+
     try {
       await registerUser({
         email,
@@ -26,7 +42,7 @@ export default function RegisterPage() {
         password,
         displayName: displayName || undefined,
       });
-      router.replace('/');
+      router.replace('/login');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message || 'Unable to register');
@@ -42,6 +58,7 @@ export default function RegisterPage() {
     email.trim().length > 0 &&
     username.trim().length >= 3 &&
     password.length >= 8 &&
+    passwordErrors.length === 0 &&
     !submitting;
 
   return (
@@ -88,14 +105,28 @@ export default function RegisterPage() {
             <input
               type="password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-gray-400 focus:bg-white"
+              onChange={(event) => handlePasswordChange(event.target.value)}
+              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:bg-white ${
+                passwordErrors.length > 0 && password.length > 0 ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-gray-400'
+              }`}
               placeholder="At least 8 characters"
               autoComplete="new-password"
               required
               minLength={8}
             />
           </label>
+          
+          {passwordErrors.length > 0 && password.length > 0 && (
+            <div className="text-xs text-red-600 space-y-1">
+                <p className="font-semibold text-gray-700">Password requirements:</p>
+                <ul className="list-disc pl-4">
+                    {passwordErrors.map((err, i) => (
+                        <li key={i}>{err}</li>
+                    ))}
+                </ul>
+            </div>
+          )}
+
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <button
             type="submit"
