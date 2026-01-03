@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { PostList } from '@/components/users/PostList';
+import { ApiError } from '@/lib/api';
+import { createPost } from '@/lib/users';
 
 
 
@@ -10,8 +12,40 @@ export default function FeedPage() {
   const { user } = useAuth();
   const [draft, setDraft] = useState('');
   const [feedType, setFeedType] = useState<'timeline' | 'user' | 'following'>('timeline');
+  const [visibility, setVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC');
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const canPost = draft.trim().length > 0 && draft.trim().length <= 280;
+  const canPost =
+    Boolean(user) &&
+    draft.trim().length > 0 &&
+    draft.trim().length <= 280 &&
+    !posting;
+
+  const handlePost = async () => {
+    if (!user || !canPost) return;
+
+    setPosting(true);
+    setError(null);
+    try {
+      await createPost({
+        content: draft.trim(),
+        visibility,
+      });
+      setDraft('');
+      setVisibility('PUBLIC');
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message || 'Unable to post');
+      } else {
+        setError('Unable to post');
+      }
+    } finally {
+      setPosting(false);
+    }
+  };
 
   return (
     <div className="gradient-bg min-h-screen">
@@ -44,16 +78,35 @@ export default function FeedPage() {
                 rows={3}
                 maxLength={280}
               />
-              <div className="mt-2 flex items-center justify-between text-sm text-gray-500">
-                <span>{draft.length}/280</span>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
+                <div className="flex items-center gap-3">
+                  <span>{draft.length}/280</span>
+                  <label className="flex items-center gap-2">
+                    <span className="text-xs uppercase tracking-wide text-gray-500">Visibility</span>
+                    <select
+                      value={visibility}
+                      onChange={(event) => setVisibility(event.target.value as 'PUBLIC' | 'PRIVATE')}
+                      className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+                      disabled={!user}
+                    >
+                      <option value="PUBLIC">Public</option>
+                      <option value="PRIVATE">Private</option>
+                    </select>
+                  </label>
+                </div>
                 <button
                   type="button"
                   disabled={!canPost}
+                  onClick={handlePost}
                   className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
                 >
-                  Post
+                  {posting ? 'Posting...' : 'Post'}
                 </button>
               </div>
+              {!user && (
+                <p className="mt-2 text-xs text-gray-500">Log in to create a post.</p>
+              )}
+              {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
             </div>
             <div className="border-t border-gray-100 px-4 py-3 text-sm font-semibold text-gray-800 flex gap-4">
               <button
@@ -96,7 +149,7 @@ export default function FeedPage() {
               itemProp="articleBody"
             >
               <PostList 
-                key={feedType} // Force remount to clear state/offset
+                key={`${feedType}-${refreshKey}`} // Force remount to clear state/offset
                 type={feedType} 
                 username={feedType === 'user' ? user?.username : undefined} 
               />

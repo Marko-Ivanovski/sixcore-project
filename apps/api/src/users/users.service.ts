@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
+import { PostKind, PostVisibility } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface CreateUserInput {
@@ -105,12 +106,18 @@ export class UsersService {
   async getProfile(username: string, viewerId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { username: username.toLowerCase() },
-      include: {
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        bio: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
         _count: {
           select: {
             followers: true,
             following: true,
-            posts: true,
           },
         },
       },
@@ -121,6 +128,7 @@ export class UsersService {
     }
 
     let isFollowing = false;
+    let canViewPrivate = false;
     if (viewerId && viewerId !== user.id) {
       const follow = await this.prisma.follow.findUnique({
         where: {
@@ -131,17 +139,23 @@ export class UsersService {
         },
       });
       isFollowing = !!follow;
+      canViewPrivate = isFollowing;
+    } else if (viewerId === user.id) {
+      canViewPrivate = true;
     }
 
-    const u = user as any;
+    const postsCount = await this.prisma.post.count({
+      where: {
+        authorId: user.id,
+        ...(canViewPrivate ? {} : { visibility: PostVisibility.PUBLIC }),
+      },
+    });
+
     return {
       ...user,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      postsCount: u._count?.posts ?? 0,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      followersCount: u._count?.followers ?? 0,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      followingCount: u._count?.following ?? 0,
+      postsCount,
+      followersCount: user._count?.followers ?? 0,
+      followingCount: user._count?.following ?? 0,
       isFollowing,
     };
   }
@@ -154,10 +168,8 @@ export class UsersService {
   ) {
     const user = await this.prisma.user.findUnique({
       where: { username: username.toLowerCase() },
-      include: {
-        _count: {
-          select: { posts: true },
-        },
+      select: {
+        id: true,
       },
     });
 
@@ -165,9 +177,19 @@ export class UsersService {
       return null;
     }
 
+    const canViewPrivate =
+      viewerId ? await this.canViewPrivatePosts(viewerId, user.id) : false;
+
+    const whereClause = {
+      authorId: user.id,
+      ...(canViewPrivate ? {} : { visibility: PostVisibility.PUBLIC }),
+    };
+
+    const total = await this.prisma.post.count({ where: whereClause });
+
     // Stable ordering by createdAt desc, then id desc
     const posts = await this.prisma.post.findMany({
-      where: { authorId: user.id },
+      where: whereClause,
       take: limit + 1, // Fetch one extra to check hasMore
       skip: offset,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -200,6 +222,7 @@ export class UsersService {
     // To implement viewer flags efficiently:
     const postIds = items.map((p) => p.id);
     let likedPostIds = new Set<string>();
+    let retweetedPostIds = new Set<string>();
 
     if (viewerId) {
       const likes = await this.prisma.like.findMany({
@@ -210,11 +233,19 @@ export class UsersService {
         select: { postId: true },
       });
       likedPostIds = new Set(likes.map((l) => l.postId));
-
-      // Assuming model has Retweets, check schema if needed.
-      // Schema shows Post with kind=RETWEET, but retweeting creates a new post?
-      // The requirement says "viewer flags". Standard is usually likedByMe.
-      // The schema has `likes` table.
+      const retweets = await this.prisma.post.findMany({
+        where: {
+          authorId: viewerId,
+          kind: PostKind.RETWEET,
+          originalPostId: { in: postIds },
+        },
+        select: { originalPostId: true },
+      });
+      retweetedPostIds = new Set(
+        retweets
+          .map((retweet) => retweet.originalPostId)
+          .filter((id): id is string => Boolean(id)),
+      );
     }
 
     const mappedItems = items.map((p) => ({
@@ -223,17 +254,33 @@ export class UsersService {
       commentCount: p._count.comments,
       retweetCount: p._count.retweets,
       likedByMe: likedPostIds.has(p.id),
-      // retweetedByMe: ... // schema interaction for retweets is a bit complex (PostKind), skipping for simplicity unless strictly required
+      retweetedByMe: retweetedPostIds.has(p.id),
     }));
 
     return {
       items: mappedItems,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      total: (user as any)._count?.posts ?? 0, // Approximate total from profile or separate count query
+      total,
       limit,
       offset,
       hasMore,
     };
+  }
+
+  private async canViewPrivatePosts(viewerId: string, userId: string) {
+    if (viewerId === userId) {
+      return true;
+    }
+
+    const follow = await this.prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: viewerId,
+          followingId: userId,
+        },
+      },
+    });
+
+    return Boolean(follow);
   }
 
   async followUser(followerId: string, followingUsername: string) {
