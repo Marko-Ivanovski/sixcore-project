@@ -6,16 +6,34 @@ const commentPreviewOrderBy: Prisma.CommentOrderByWithRelationInput[] = [
   { id: 'desc' },
 ];
 
+const commentReplyOrderBy: Prisma.CommentOrderByWithRelationInput[] = [
+  { createdAt: 'asc' },
+  { id: 'asc' },
+];
+
 const commentPreviewInclude = {
   where: { parentCommentId: null },
-  orderBy: [...commentPreviewOrderBy],
-  take: 4,
+  orderBy: commentPreviewOrderBy,
+  take: 10,
   include: {
     author: {
       select: {
         username: true,
         displayName: true,
         avatarUrl: true,
+      },
+    },
+    replies: {
+      orderBy: commentReplyOrderBy,
+      take: 5,
+      include: {
+        author: {
+          select: {
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+          },
+        },
       },
     },
     _count: {
@@ -127,10 +145,17 @@ export async function mapPostsForViewer(
       createdAt: comment.createdAt,
       author: comment.author,
       replyCount: comment._count?.replies ?? 0,
+      replies: (comment.replies ?? []).map((reply) => ({
+        id: reply.id,
+        content: reply.content,
+        createdAt: reply.createdAt,
+        author: reply.author,
+      })),
     }));
 
     return {
       id: post.id,
+      targetPostId: targetId,
       kind: post.kind,
       originalPostId: post.kind === PostKind.RETWEET ? targetId : undefined,
       repostedBy:

@@ -4,13 +4,16 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Heart, Lock, MessageCircle, Repeat2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { ApiError } from '@/lib/api';
 import { CommentPreview, getUserPosts, getTimeline, PostItem } from '../../lib/users';
 import {
   addComment,
+  deletePost,
   likePost,
   retweetPost,
   unlikePost,
   unretweetPost,
+  updatePost,
 } from '@/lib/posts';
 import { buildAvatarUrl, setAvatarFallback } from '@/utils/avatar';
 
@@ -31,8 +34,20 @@ export function PostList({ username, type = 'user' }: PostListProps) {
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [commentErrors, setCommentErrors] = useState<Record<string, string | null>>({});
   const [commentPending, setCommentPending] = useState<Record<string, boolean>>({});
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [replyErrors, setReplyErrors] = useState<Record<string, string | null>>({});
+  const [replyPending, setReplyPending] = useState<Record<string, boolean>>({});
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editDrafts, setEditDrafts] = useState<Record<string, string>>({});
+  const [editErrors, setEditErrors] = useState<Record<string, string | null>>({});
+  const [editPending, setEditPending] = useState<Record<string, boolean>>({});
+  const [deletePending, setDeletePending] = useState<Record<string, boolean>>({});
 
-  const getTargetId = (post: PostItem) => post.originalPostId ?? post.id;
+  const maxCommentsPerPost = 10;
+  const maxRepliesPerComment = 5;
+
+  const getTargetId = (post: PostItem) =>
+    post.targetPostId || post.originalPostId || post.id;
 
   const updatePostsByTargetId = (
     targetId: string,
@@ -54,6 +69,13 @@ export function PostList({ username, type = 'user' }: PostListProps) {
       ...prev,
       [targetId]: { ...prev[targetId], [key]: value },
     }));
+  };
+
+  const getApiErrorMessage = (err: unknown, fallback: string) => {
+    if (err instanceof ApiError) {
+      return err.message || fallback;
+    }
+    return fallback;
   };
 
   const handleLikeToggle = async (post: PostItem) => {
@@ -149,6 +171,15 @@ export function PostList({ username, type = 'user' }: PostListProps) {
     const draft = (commentDrafts[targetId] ?? '').trim();
     if (!draft) return;
 
+    const existingCount = post.commentsPreview?.length ?? 0;
+    if (existingCount >= maxCommentsPerPost) {
+      setCommentErrors((prev) => ({
+        ...prev,
+        [targetId]: 'Comment limit reached.',
+      }));
+      return;
+    }
+
     setActionError(null);
     setCommentErrors((prev) => ({ ...prev, [targetId]: null }));
     setCommentPending((prev) => ({ ...prev, [targetId]: true }));
@@ -161,11 +192,15 @@ export function PostList({ username, type = 'user' }: PostListProps) {
         createdAt: newComment.createdAt,
         author: newComment.author,
         replyCount: newComment.replies?.length ?? 0,
+        replies: newComment.replies ?? [],
       };
 
       updatePostsByTargetId(targetId, (current) => {
         const existing = current.commentsPreview ?? [];
-        const updatedPreview = [preview, ...existing].slice(0, 4);
+        const updatedPreview = [preview, ...existing].slice(
+          0,
+          maxCommentsPerPost,
+        );
         return {
           ...current,
           commentsPreview: updatedPreview,
@@ -177,10 +212,159 @@ export function PostList({ username, type = 'user' }: PostListProps) {
     } catch (err) {
       setCommentErrors((prev) => ({
         ...prev,
-        [targetId]: 'Unable to add comment.',
+        [targetId]: getApiErrorMessage(err, 'Unable to add comment.'),
       }));
     } finally {
       setCommentPending((prev) => ({ ...prev, [targetId]: false }));
+    }
+  };
+
+  const handleReplySubmit = async (post: PostItem, comment: CommentPreview) => {
+    if (!user) {
+      setActionError('Log in to reply.');
+      return;
+    }
+
+    const targetId = getTargetId(post);
+    const draft = (replyDrafts[comment.id] ?? '').trim();
+    if (!draft) return;
+
+    const replyCount = comment.replyCount ?? comment.replies?.length ?? 0;
+    if (replyCount >= maxRepliesPerComment) {
+      setReplyErrors((prev) => ({
+        ...prev,
+        [comment.id]: 'Reply limit reached.',
+      }));
+      return;
+    }
+
+    setActionError(null);
+    setReplyErrors((prev) => ({ ...prev, [comment.id]: null }));
+    setReplyPending((prev) => ({ ...prev, [comment.id]: true }));
+
+    try {
+      const newReply = await addComment(targetId, draft, comment.id);
+      const replyPreview = {
+        id: newReply.id,
+        content: newReply.content,
+        createdAt: newReply.createdAt,
+        author: newReply.author,
+      };
+
+      updatePostsByTargetId(targetId, (current) => {
+        const nextComments = (current.commentsPreview ?? []).map((item) => {
+          if (item.id !== comment.id) return item;
+          const existingReplies = item.replies ?? [];
+          const updatedReplies = [...existingReplies, replyPreview].slice(
+            0,
+            maxRepliesPerComment,
+          );
+          return {
+            ...item,
+            replies: updatedReplies,
+            replyCount: updatedReplies.length,
+          };
+        });
+
+        return {
+          ...current,
+          commentsPreview: nextComments,
+          commentCount: current.commentCount + 1,
+        };
+      });
+
+      setReplyDrafts((prev) => ({ ...prev, [comment.id]: '' }));
+    } catch (err) {
+      setReplyErrors((prev) => ({
+        ...prev,
+        [comment.id]: getApiErrorMessage(err, 'Unable to add reply.'),
+      }));
+    } finally {
+      setReplyPending((prev) => ({ ...prev, [comment.id]: false }));
+    }
+  };
+
+  const startEditing = (post: PostItem) => {
+    setEditingPostId(post.id);
+    setEditDrafts((prev) => ({
+      ...prev,
+      [post.id]: post.content ?? '',
+    }));
+    setEditErrors((prev) => ({ ...prev, [post.id]: null }));
+  };
+
+  const cancelEditing = () => {
+    if (editingPostId) {
+      setEditErrors((prev) => ({ ...prev, [editingPostId]: null }));
+    }
+    setEditingPostId(null);
+  };
+
+  const handleEditSubmit = async (post: PostItem) => {
+    if (!user) {
+      setActionError('Log in to edit posts.');
+      return;
+    }
+
+    const draft = (editDrafts[post.id] ?? '').trim();
+    if (!draft && !post.imageUrl) {
+      setEditErrors((prev) => ({
+        ...prev,
+        [post.id]: 'Content or image is required.',
+      }));
+      return;
+    }
+
+    setActionError(null);
+    setEditErrors((prev) => ({ ...prev, [post.id]: null }));
+    setEditPending((prev) => ({ ...prev, [post.id]: true }));
+
+    try {
+      const updated = await updatePost(post.id, { content: draft });
+      updatePostsByTargetId(updated.targetPostId, (current) => ({
+        ...current,
+        content: updated.content,
+        imageUrl: updated.imageUrl,
+        visibility: updated.visibility,
+      }));
+      setEditingPostId(null);
+    } catch (err) {
+      setEditErrors((prev) => ({
+        ...prev,
+        [post.id]: getApiErrorMessage(err, 'Unable to update post.'),
+      }));
+    } finally {
+      setEditPending((prev) => ({ ...prev, [post.id]: false }));
+    }
+  };
+
+  const handleDelete = async (post: PostItem) => {
+    if (!user) {
+      setActionError('Log in to delete posts.');
+      return;
+    }
+
+    if (deletePending[post.id]) return;
+
+    const confirmed = window.confirm('Delete this post?');
+    if (!confirmed) return;
+
+    setActionError(null);
+    setDeletePending((prev) => ({ ...prev, [post.id]: true }));
+
+    try {
+      const targetId = getTargetId(post);
+      await deletePost(post.id);
+      setPosts((prev) =>
+        prev.filter((item) => getTargetId(item) !== targetId),
+      );
+      if (editingPostId === post.id) {
+        setEditingPostId(null);
+      }
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, 'Unable to delete post.'));
+    } finally {
+      setDeletePending((prev) => ({ ...prev, [post.id]: false }));
     }
   };
 
@@ -245,10 +429,17 @@ export function PostList({ username, type = 'user' }: PostListProps) {
       )}
       {posts.map((post) => {
         const targetId = getTargetId(post);
-        const preview = post.commentsPreview ?? [];
+        const comments = post.commentsPreview ?? [];
+        const commentLimitReached = comments.length >= maxCommentsPerPost;
         const commentError = commentErrors[targetId];
         const isCommenting = commentPending[targetId];
         const pendingFlags = pending[targetId] ?? {};
+        const isAuthor = user?.username === post.author.username;
+        const canEdit = isAuthor && post.kind === 'ORIGINAL';
+        const isEditing = editingPostId === post.id;
+        const editError = editErrors[post.id];
+        const isSaving = editPending[post.id];
+        const isDeleting = deletePending[post.id];
 
         return (
           <div key={post.id} className="card p-6">
@@ -275,7 +466,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                 />
               </Link>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/user/${post.author.username}`}
                     className="font-bold text-gray-900 truncate hover:underline"
@@ -289,24 +480,86 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                     @{post.author.username}
                   </Link>
                   <span className="text-sm text-gray-400">|</span>
-                  <Link
-                    href={`/post/${targetId}`}
-                    className="text-sm text-gray-400 hover:text-gray-600"
-                  >
+                  <span className="text-sm text-gray-400">
                     {new Date(post.createdAt).toLocaleDateString()}
-                  </Link>
+                  </span>
                   {post.visibility === 'PRIVATE' && (
                     <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
                       <Lock size={12} />
                       Private
                     </span>
                   )}
+                  {canEdit && (
+                    <div className="ml-auto flex items-center gap-2">
+                      {isEditing ? (
+                        <button
+                          type="button"
+                          onClick={cancelEditing}
+                          className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startEditing(post)}
+                          className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {!isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(post)}
+                          disabled={isDeleting}
+                          className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50"
+                        >
+                          {isDeleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {post.content && (
-                  <p className="mt-2 text-gray-800 whitespace-pre-wrap">
-                    {post.content}
-                  </p>
+                {isEditing ? (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      handleEditSubmit(post);
+                    }}
+                    className="mt-3 space-y-2"
+                  >
+                    <textarea
+                      value={editDrafts[post.id] ?? post.content ?? ''}
+                      onChange={(event) =>
+                        setEditDrafts((prev) => ({
+                          ...prev,
+                          [post.id]: event.target.value,
+                        }))
+                      }
+                      className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60"
+                      rows={3}
+                      maxLength={280}
+                      disabled={isSaving}
+                    />
+                    {editError && <p className="text-xs text-red-600">{editError}</p>}
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  post.content && (
+                    <p className="mt-2 text-gray-800 whitespace-pre-wrap">
+                      {post.content}
+                    </p>
+                  )
                 )}
 
                 {post.imageUrl && (
@@ -321,14 +574,13 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                 )}
 
                 <div className="mt-4 flex items-center space-x-6 text-gray-500 text-sm">
-                  <Link
-                    href={`/post/${targetId}`}
-                    className="flex items-center space-x-1 hover:text-blue-500 transition-colors"
+                  <div
+                    className="flex items-center space-x-1 text-gray-500"
                     aria-label="Comments"
                   >
                     <MessageCircle size={16} />
                     <span>{post.commentCount}</span>
-                  </Link>
+                  </div>
                   <button
                     className={`flex items-center space-x-1 transition-colors ${
                       post.retweetedByMe ? 'text-green-600' : 'hover:text-green-500'
@@ -358,24 +610,99 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                 </div>
 
                 <div className="mt-4 space-y-3 text-sm text-gray-600">
-                  {preview.length > 0 && (
+                  {comments.length > 0 && (
                     <div className="space-y-3">
-                      {preview.map((comment) => (
-                        <div key={comment.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                          <div className="text-xs text-gray-500">
-                            {comment.author.displayName || comment.author.username} @
-                            {comment.author.username}
-                          </div>
-                          <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">
-                            {comment.content}
-                          </p>
-                          {comment.replyCount > 0 && (
-                            <div className="mt-1 text-xs text-gray-500">
-                              {comment.replyCount} repl{comment.replyCount === 1 ? 'y' : 'ies'}
+                      {comments.map((comment) => {
+                        const replies = comment.replies ?? [];
+                        const replyCount = comment.replyCount ?? replies.length;
+                        const replyLimitReached = replyCount >= maxRepliesPerComment;
+                        const replyError = replyErrors[comment.id];
+                        const isReplying = replyPending[comment.id];
+
+                        return (
+                          <div
+                            key={comment.id}
+                            className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                          >
+                            <div className="text-xs text-gray-500">
+                              {comment.author.displayName || comment.author.username} @
+                              {comment.author.username}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">
+                              {comment.content}
+                            </p>
+
+                            {replies.length > 0 && (
+                              <div className="mt-2 space-y-2 border-l border-gray-200 pl-3">
+                                {replies.map((reply) => (
+                                  <div
+                                    key={reply.id}
+                                    className="rounded-md bg-white px-2 py-1"
+                                  >
+                                    <div className="text-xs text-gray-500">
+                                      {reply.author.displayName || reply.author.username} @
+                                      {reply.author.username}
+                                    </div>
+                                    <p className="mt-0.5 text-sm text-gray-800 whitespace-pre-wrap">
+                                      {reply.content}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {user ? (
+                              <form
+                                onSubmit={(event) => {
+                                  event.preventDefault();
+                                  handleReplySubmit(post, comment);
+                                }}
+                                className="mt-3 space-y-2"
+                              >
+                                <textarea
+                                  value={replyDrafts[comment.id] ?? ''}
+                                  onChange={(event) =>
+                                    setReplyDrafts((prev) => ({
+                                      ...prev,
+                                      [comment.id]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder="Write a reply..."
+                                  className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60"
+                                  rows={2}
+                                  maxLength={280}
+                                  disabled={replyLimitReached || isReplying}
+                                />
+                                {replyError && (
+                                  <p className="text-xs text-red-600">{replyError}</p>
+                                )}
+                                <div className="flex items-center justify-between">
+                                  {replyLimitReached ? (
+                                    <span className="text-xs text-gray-500">
+                                      Reply limit reached.
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-gray-500">
+                                      {replyCount} repl{replyCount === 1 ? 'y' : 'ies'}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="submit"
+                                    disabled={isReplying || replyLimitReached}
+                                    className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
+                                  >
+                                    {isReplying ? 'Replying...' : 'Reply'}
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <p className="mt-2 text-xs text-gray-500">
+                                Log in to reply.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -396,21 +723,25 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                           }))
                         }
                         placeholder="Add a comment..."
-                        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none"
+                        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60"
                         rows={2}
                         maxLength={280}
+                        disabled={commentLimitReached || isCommenting}
                       />
                       {commentError && <p className="text-xs text-red-600">{commentError}</p>}
                       <div className="flex items-center justify-between">
-                        <Link
-                          href={`/post/${targetId}`}
-                          className="text-xs font-semibold text-gray-600 hover:underline"
-                        >
-                          View all comments
-                        </Link>
+                        {commentLimitReached ? (
+                          <span className="text-xs text-gray-500">
+                            Comment limit reached.
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            {comments.length} of {maxCommentsPerPost} comments
+                          </span>
+                        )}
                         <button
                           type="submit"
-                          disabled={isCommenting}
+                          disabled={isCommenting || commentLimitReached}
                           className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
                         >
                           {isCommenting ? 'Posting...' : 'Comment'}
@@ -418,12 +749,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                       </div>
                     </form>
                   ) : (
-                    <p className="text-xs text-gray-500">
-                      Log in to comment.{' '}
-                      <Link href={`/post/${targetId}`} className="font-semibold hover:underline">
-                        View all comments
-                      </Link>
-                    </p>
+                    <p className="text-xs text-gray-500">Log in to comment.</p>
                   )}
                 </div>
               </div>

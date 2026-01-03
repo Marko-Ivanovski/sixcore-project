@@ -15,28 +15,6 @@ export interface CommentItem {
   replies?: CommentItem[];
 }
 
-export interface CommentsResponse {
-  items: CommentItem[];
-  total: number;
-  limit: number;
-  offset: number;
-  hasMore: boolean;
-}
-
-export async function getPostById(postId: string): Promise<PostItem> {
-  return apiFetch<PostItem>(`/api/posts/${postId}`);
-}
-
-export async function getPostComments(
-  postId: string,
-  limit = 20,
-  offset = 0,
-): Promise<CommentsResponse> {
-  return apiFetch<CommentsResponse>(
-    `/api/posts/${postId}/comments?limit=${limit}&offset=${offset}`,
-  );
-}
-
 export async function addComment(
   postId: string,
   content: string,

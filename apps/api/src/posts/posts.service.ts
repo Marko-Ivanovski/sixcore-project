@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -15,6 +16,9 @@ import { mapPostsForViewer, postInclude } from './post.mapper';
 @Injectable()
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readonly maxCommentsPerPost = 10;
+  private readonly maxRepliesPerComment = 5;
 
   async getTimeline(
     limit: number,
@@ -322,7 +326,23 @@ export class PostsService {
         throw new BadRequestException('Invalid parent comment');
       }
 
+      const replyCount = await this.prisma.comment.count({
+        where: { parentCommentId: parentComment.id },
+      });
+
+      if (replyCount >= this.maxRepliesPerComment) {
+        throw new ConflictException('Reply limit reached');
+      }
+
       parentCommentId = parentComment.id;
+    } else {
+      const commentCount = await this.prisma.comment.count({
+        where: { postId: targetPostId, parentCommentId: null },
+      });
+
+      if (commentCount >= this.maxCommentsPerPost) {
+        throw new ConflictException('Comment limit reached');
+      }
     }
 
     const comment = await this.prisma.comment.create({

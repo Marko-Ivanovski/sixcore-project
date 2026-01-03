@@ -23,6 +23,7 @@ export interface UserSearchResult {
 
 export interface PostItem {
   id: string;
+  targetPostId: string;
   kind: 'ORIGINAL' | 'RETWEET';
   originalPostId?: string;
   repostedBy?: {
@@ -47,6 +48,17 @@ export interface PostItem {
   commentsPreview?: CommentPreview[];
 }
 
+export interface CommentReply {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+}
+
 export interface CommentPreview {
   id: string;
   content: string;
@@ -57,6 +69,7 @@ export interface CommentPreview {
     avatarUrl: string | null;
   };
   replyCount: number;
+  replies?: CommentReply[];
 }
 
 export interface PostsResponse {
