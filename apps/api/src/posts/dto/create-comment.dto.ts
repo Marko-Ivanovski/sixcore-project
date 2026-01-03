@@ -3,7 +3,7 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-valid
 export class CreateCommentDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(280)
+  @MaxLength(100)
   content!: string;
 
   @IsOptional()

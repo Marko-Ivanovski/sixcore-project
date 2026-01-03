@@ -11,7 +11,7 @@ import { createPost } from '@/lib/users';
 export default function FeedPage() {
   const { user } = useAuth();
   const [draft, setDraft] = useState('');
-  const [feedType, setFeedType] = useState<'timeline' | 'user' | 'following'>('timeline');
+  const [feedType, setFeedType] = useState<'timeline' | 'following'>('timeline');
   const [visibility, setVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC');
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,38 +120,25 @@ export default function FeedPage() {
                 All Posts
               </button>
               {user && (
-                <>
-                  <button
-                    onClick={() => setFeedType('following')}
-                    className={`pb-2 border-b-2 transition-colors ${
-                      feedType === 'following'
-                        ? 'border-gray-900 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    Following
-                  </button>
-                  <button
-                    onClick={() => setFeedType('user')}
-                    className={`pb-2 border-b-2 transition-colors ${
-                      feedType === 'user'
-                        ? 'border-gray-900 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    My Posts
-                  </button>
-                </>
+                <button
+                  onClick={() => setFeedType('following')}
+                  className={`pb-2 border-b-2 transition-colors ${
+                    feedType === 'following'
+                      ? 'border-gray-900 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Following
+                </button>
               )}
             </div>
             <div
               className="border-t border-gray-100 bg-gray-50 px-4 py-6 text-sm text-gray-600"
               itemProp="articleBody"
             >
-              <PostList 
+              <PostList
                 key={`${feedType}-${refreshKey}`} // Force remount to clear state/offset
-                type={feedType} 
-                username={feedType === 'user' ? user?.username : undefined} 
+                type={feedType}
               />
             </div>
           </article>

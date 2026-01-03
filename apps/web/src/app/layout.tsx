@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sixcore",
+  title: "Twitter Clone",
   description: "A minimal social feed inspired by Twitter",
 };
 

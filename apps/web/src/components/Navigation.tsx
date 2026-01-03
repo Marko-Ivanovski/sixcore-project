@@ -73,7 +73,7 @@ export function Navigation() {
     <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
         <Link href="/" className="shrink-0 text-xl font-semibold text-gray-900">
-          Sixcore
+          Twitter Clone
         </Link>
         <div className="relative flex w-full max-w-sm flex-1 items-center" ref={searchRef}>
           <Search className="absolute left-3 h-4 w-4 text-gray-400" />

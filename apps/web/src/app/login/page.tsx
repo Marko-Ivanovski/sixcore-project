@@ -51,7 +51,7 @@ function LoginContent() {
     <div className="gradient-bg flex min-h-screen items-center justify-center px-4 py-10">
       <div className="card w-full max-w-md p-6">
         <h1 className="text-xl font-semibold text-gray-900">Welcome back</h1>
-        <p className="mt-1 text-sm text-gray-600">Sign in to continue to Sixcore.</p>
+        <p className="mt-1 text-sm text-gray-600">Sign in to continue to Twitter Clone.</p>
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block text-sm font-medium text-gray-800">
             Email or username

@@ -434,6 +434,8 @@ export function PostList({ username, type = 'user' }: PostListProps) {
         const commentError = commentErrors[targetId];
         const isCommenting = commentPending[targetId];
         const pendingFlags = pending[targetId] ?? {};
+        const commentDraft = commentDrafts[targetId] ?? '';
+        const commentHasText = commentDraft.trim().length > 0;
         const isAuthor = user?.username === post.author.username;
         const canEdit = isAuthor && post.kind === 'ORIGINAL';
         const isEditing = editingPostId === post.id;
@@ -450,7 +452,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                   href={`/user/${post.repostedBy.username}`}
                   className="hover:underline"
                 >
-                  {post.repostedBy.displayName || post.repostedBy.username}
+                  @{post.repostedBy.username}
                 </Link>
                 <span>reposted</span>
               </div>
@@ -618,6 +620,8 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                         const replyLimitReached = replyCount >= maxRepliesPerComment;
                         const replyError = replyErrors[comment.id];
                         const isReplying = replyPending[comment.id];
+                        const replyDraft = replyDrafts[comment.id] ?? '';
+                        const replyHasText = replyDraft.trim().length > 0;
 
                         return (
                           <div
@@ -660,7 +664,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                                 className="mt-3 space-y-2"
                               >
                                 <textarea
-                                  value={replyDrafts[comment.id] ?? ''}
+                                  value={replyDraft}
                                   onChange={(event) =>
                                     setReplyDrafts((prev) => ({
                                       ...prev,
@@ -670,7 +674,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                                   placeholder="Write a reply..."
                                   className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60"
                                   rows={2}
-                                  maxLength={280}
+                                  maxLength={100}
                                   disabled={replyLimitReached || isReplying}
                                 />
                                 {replyError && (
@@ -688,7 +692,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                                   )}
                                   <button
                                     type="submit"
-                                    disabled={isReplying || replyLimitReached}
+                                    disabled={!replyHasText || isReplying || replyLimitReached}
                                     className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
                                   >
                                     {isReplying ? 'Replying...' : 'Reply'}
@@ -715,7 +719,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                       className="space-y-2"
                     >
                       <textarea
-                        value={commentDrafts[targetId] ?? ''}
+                        value={commentDraft}
                         onChange={(event) =>
                           setCommentDrafts((prev) => ({
                             ...prev,
@@ -725,7 +729,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                         placeholder="Add a comment..."
                         className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60"
                         rows={2}
-                        maxLength={280}
+                        maxLength={100}
                         disabled={commentLimitReached || isCommenting}
                       />
                       {commentError && <p className="text-xs text-red-600">{commentError}</p>}
@@ -741,7 +745,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                         )}
                         <button
                           type="submit"
-                          disabled={isCommenting || commentLimitReached}
+                          disabled={!commentHasText || isCommenting || commentLimitReached}
                           className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
                         >
                           {isCommenting ? 'Posting...' : 'Comment'}
