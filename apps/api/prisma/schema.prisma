@@ -93,13 +93,17 @@ model Comment {
   id        String   @id @default(uuid())
   postId    String
   authorId  String
+  parentCommentId String?
   content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentComment Comment? @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
 
   @@index([postId, createdAt])
   @@index([authorId])
+  @@index([parentCommentId])
 }

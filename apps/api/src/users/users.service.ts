@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
-import { PostKind, PostVisibility } from '@prisma/client';
+import { PostVisibility } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { mapPostsForViewer, postInclude } from '../posts/post.mapper';
 
 interface CreateUserInput {
   email: string;
@@ -221,69 +222,13 @@ export class UsersService {
       take: limit + 1, // Fetch one extra to check hasMore
       skip: offset,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      include: {
-        author: {
-          select: {
-            username: true,
-            displayName: true,
-            avatarUrl: true,
-          },
-        },
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-            retweets: true,
-          },
-        },
-      },
+      include: postInclude,
     });
 
     const hasMore = posts.length > limit;
     const items = hasMore ? posts.slice(0, limit) : posts;
 
-    // Enhance with viewer state (likedByMe, etc.) - minimal implementation for now
-    // If needed, we'd do a second query or include based on viewerId
-    // For this scope, let's keep it simple as per requirements.
-    // "Items are Post[] ... viewer flags if already defined"
-
-    // To implement viewer flags efficiently:
-    const postIds = items.map((p) => p.id);
-    let likedPostIds = new Set<string>();
-    let retweetedPostIds = new Set<string>();
-
-    if (viewerId) {
-      const likes = await this.prisma.like.findMany({
-        where: {
-          userId: viewerId,
-          postId: { in: postIds },
-        },
-        select: { postId: true },
-      });
-      likedPostIds = new Set(likes.map((l) => l.postId));
-      const retweets = await this.prisma.post.findMany({
-        where: {
-          authorId: viewerId,
-          kind: PostKind.RETWEET,
-          originalPostId: { in: postIds },
-        },
-        select: { originalPostId: true },
-      });
-      retweetedPostIds = new Set(
-        retweets
-          .map((retweet) => retweet.originalPostId)
-          .filter((id): id is string => Boolean(id)),
-      );
-    }
-
-    const mappedItems = items.map((p) => ({
-      ...p,
-      likeCount: p._count.likes,
-      commentCount: p._count.comments,
-      retweetCount: p._count.retweets,
-      likedByMe: likedPostIds.has(p.id),
-      retweetedByMe: retweetedPostIds.has(p.id),
-    }));
+    const mappedItems = await mapPostsForViewer(this.prisma, items, viewerId);
 
     return {
       items: mappedItems,

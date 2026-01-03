@@ -1,8 +1,17 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Heart, Lock, MessageCircle, Repeat2 } from 'lucide-react';
-import { getUserPosts, getTimeline, PostItem } from '../../lib/users';
+import { useAuth } from '@/context/AuthContext';
+import { CommentPreview, getUserPosts, getTimeline, PostItem } from '../../lib/users';
+import {
+  addComment,
+  likePost,
+  retweetPost,
+  unlikePost,
+  unretweetPost,
+} from '@/lib/posts';
 import { buildAvatarUrl, setAvatarFallback } from '@/utils/avatar';
 
 interface PostListProps {
@@ -11,11 +20,169 @@ interface PostListProps {
 }
 
 export function PostList({ username, type = 'user' }: PostListProps) {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pending, setPending] = useState<Record<string, { like?: boolean; retweet?: boolean }>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [commentErrors, setCommentErrors] = useState<Record<string, string | null>>({});
+  const [commentPending, setCommentPending] = useState<Record<string, boolean>>({});
+
+  const getTargetId = (post: PostItem) => post.originalPostId ?? post.id;
+
+  const updatePostsByTargetId = (
+    targetId: string,
+    updater: (post: PostItem) => PostItem,
+  ) => {
+    setPosts((prev) =>
+      prev.map((post) =>
+        getTargetId(post) === targetId ? updater(post) : post,
+      ),
+    );
+  };
+
+  const setPendingState = (
+    targetId: string,
+    key: 'like' | 'retweet',
+    value: boolean,
+  ) => {
+    setPending((prev) => ({
+      ...prev,
+      [targetId]: { ...prev[targetId], [key]: value },
+    }));
+  };
+
+  const handleLikeToggle = async (post: PostItem) => {
+    if (!user) {
+      setActionError('Log in to like posts.');
+      return;
+    }
+    const targetId = getTargetId(post);
+    if (pending[targetId]?.like) return;
+
+    setActionError(null);
+    const nextLiked = !post.likedByMe;
+    const previous = { likedByMe: post.likedByMe, likeCount: post.likeCount };
+
+    updatePostsByTargetId(targetId, (current) => ({
+      ...current,
+      likedByMe: nextLiked,
+      likeCount: Math.max(0, current.likeCount + (nextLiked ? 1 : -1)),
+    }));
+    setPendingState(targetId, 'like', true);
+
+    try {
+      const result = nextLiked
+        ? await likePost(targetId)
+        : await unlikePost(targetId);
+      updatePostsByTargetId(targetId, (current) => ({
+        ...current,
+        likedByMe: result.likedByMe,
+        likeCount: result.likeCount,
+      }));
+    } catch (err) {
+      updatePostsByTargetId(targetId, (current) => ({
+        ...current,
+        likedByMe: previous.likedByMe,
+        likeCount: previous.likeCount,
+      }));
+      setActionError('Unable to update like.');
+    } finally {
+      setPendingState(targetId, 'like', false);
+    }
+  };
+
+  const handleRetweetToggle = async (post: PostItem) => {
+    if (!user) {
+      setActionError('Log in to retweet posts.');
+      return;
+    }
+    const targetId = getTargetId(post);
+    if (pending[targetId]?.retweet) return;
+
+    setActionError(null);
+    const nextRetweet = !post.retweetedByMe;
+    const previous = {
+      retweetedByMe: post.retweetedByMe,
+      retweetCount: post.retweetCount,
+    };
+
+    updatePostsByTargetId(targetId, (current) => ({
+      ...current,
+      retweetedByMe: nextRetweet,
+      retweetCount: Math.max(0, current.retweetCount + (nextRetweet ? 1 : -1)),
+    }));
+    setPendingState(targetId, 'retweet', true);
+
+    try {
+      const result = nextRetweet
+        ? await retweetPost(targetId)
+        : await unretweetPost(targetId);
+      updatePostsByTargetId(targetId, (current) => ({
+        ...current,
+        retweetedByMe: result.retweetedByMe,
+        retweetCount: result.retweetCount,
+      }));
+    } catch (err) {
+      updatePostsByTargetId(targetId, (current) => ({
+        ...current,
+        retweetedByMe: previous.retweetedByMe,
+        retweetCount: previous.retweetCount,
+      }));
+      setActionError('Unable to update retweet.');
+    } finally {
+      setPendingState(targetId, 'retweet', false);
+    }
+  };
+
+  const handleCommentSubmit = async (post: PostItem) => {
+    if (!user) {
+      setActionError('Log in to comment.');
+      return;
+    }
+
+    const targetId = getTargetId(post);
+    const draft = (commentDrafts[targetId] ?? '').trim();
+    if (!draft) return;
+
+    setActionError(null);
+    setCommentErrors((prev) => ({ ...prev, [targetId]: null }));
+    setCommentPending((prev) => ({ ...prev, [targetId]: true }));
+
+    try {
+      const newComment = await addComment(targetId, draft);
+      const preview: CommentPreview = {
+        id: newComment.id,
+        content: newComment.content,
+        createdAt: newComment.createdAt,
+        author: newComment.author,
+        replyCount: newComment.replies?.length ?? 0,
+      };
+
+      updatePostsByTargetId(targetId, (current) => {
+        const existing = current.commentsPreview ?? [];
+        const updatedPreview = [preview, ...existing].slice(0, 4);
+        return {
+          ...current,
+          commentsPreview: updatedPreview,
+          commentCount: current.commentCount + 1,
+        };
+      });
+
+      setCommentDrafts((prev) => ({ ...prev, [targetId]: '' }));
+    } catch (err) {
+      setCommentErrors((prev) => ({
+        ...prev,
+        [targetId]: 'Unable to add comment.',
+      }));
+    } finally {
+      setCommentPending((prev) => ({ ...prev, [targetId]: false }));
+    }
+  };
 
   const fetchPosts = async (reset = false) => {
     setLoading(true);
@@ -71,87 +238,199 @@ export function PostList({ username, type = 'user' }: PostListProps) {
 
   return (
     <div className="space-y-4">
-      {posts.map((post) => (
-        <div key={post.id} className="card p-6">
-          <div className="flex items-start space-x-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={buildAvatarUrl(post.author.avatarUrl, post.author.username)}
-              alt={post.author.username}
-              className="h-10 w-10 rounded-full object-cover"
-              onError={(event) => setAvatarFallback(event, post.author.username)}
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-gray-900 truncate">
-                  {post.author.displayName || post.author.username}
-                </span>
-                <span className="text-sm text-gray-500 truncate">
-                  @{post.author.username}
-                </span>
-                <span className="text-sm text-gray-400">|</span>
-                <span className="text-sm text-gray-400">
-                  {new Date(post.createdAt).toLocaleDateString()}
-                </span>
-                {post.visibility === 'PRIVATE' && (
-                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
-                    <Lock size={12} />
-                    Private
-                  </span>
-                )}
+      {actionError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
+      {posts.map((post) => {
+        const targetId = getTargetId(post);
+        const preview = post.commentsPreview ?? [];
+        const commentError = commentErrors[targetId];
+        const isCommenting = commentPending[targetId];
+        const pendingFlags = pending[targetId] ?? {};
+
+        return (
+          <div key={post.id} className="card p-6">
+            {post.kind === 'RETWEET' && post.repostedBy && (
+              <div className="mb-3 flex items-center gap-2 text-xs font-medium text-gray-500">
+                <Repeat2 size={14} />
+                <Link
+                  href={`/user/${post.repostedBy.username}`}
+                  className="hover:underline"
+                >
+                  {post.repostedBy.displayName || post.repostedBy.username}
+                </Link>
+                <span>reposted</span>
               </div>
-
-              {post.content && (
-                <p className="mt-2 text-gray-800 whitespace-pre-wrap">
-                  {post.content}
-                </p>
-              )}
-
-              {post.imageUrl && (
-                <div className="mt-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={post.imageUrl}
-                    alt="Post content"
-                    className="rounded-lg max-h-96 object-cover bg-gray-100"
-                  />
+            )}
+            <div className="flex items-start space-x-3">
+              <Link href={`/user/${post.author.username}`} className="shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={buildAvatarUrl(post.author.avatarUrl, post.author.username)}
+                  alt={post.author.username}
+                  className="h-10 w-10 rounded-full object-cover"
+                  onError={(event) => setAvatarFallback(event, post.author.username)}
+                />
+              </Link>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2">
+                  <Link
+                    href={`/user/${post.author.username}`}
+                    className="font-bold text-gray-900 truncate hover:underline"
+                  >
+                    {post.author.displayName || post.author.username}
+                  </Link>
+                  <Link
+                    href={`/user/${post.author.username}`}
+                    className="text-sm text-gray-500 truncate hover:underline"
+                  >
+                    @{post.author.username}
+                  </Link>
+                  <span className="text-sm text-gray-400">|</span>
+                  <Link
+                    href={`/post/${targetId}`}
+                    className="text-sm text-gray-400 hover:text-gray-600"
+                  >
+                    {new Date(post.createdAt).toLocaleDateString()}
+                  </Link>
+                  {post.visibility === 'PRIVATE' && (
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                      <Lock size={12} />
+                      Private
+                    </span>
+                  )}
                 </div>
-              )}
 
-              <div className="mt-4 flex items-center space-x-6 text-gray-500 text-sm">
-                <button
-                  className="flex items-center space-x-1 hover:text-blue-500 transition-colors"
-                  type="button"
-                  aria-label="Comments"
-                >
-                  <MessageCircle size={16} />
-                  <span>{post.commentCount}</span>
-                </button>
-                <button
-                  className={`flex items-center space-x-1 transition-colors ${
-                    post.retweetedByMe ? 'text-green-600' : 'hover:text-green-500'
-                  }`}
-                  type="button"
-                  aria-label="Retweets"
-                >
-                  <Repeat2 size={16} />
-                  <span>{post.retweetCount}</span>
-                </button>
-                <button
-                  className={`flex items-center space-x-1 transition-colors ${
-                    post.likedByMe ? 'text-red-500' : 'hover:text-red-500'
-                  }`}
-                  type="button"
-                  aria-label="Likes"
-                >
-                  <Heart size={16} />
-                  <span>{post.likeCount}</span>
-                </button>
+                {post.content && (
+                  <p className="mt-2 text-gray-800 whitespace-pre-wrap">
+                    {post.content}
+                  </p>
+                )}
+
+                {post.imageUrl && (
+                  <div className="mt-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={post.imageUrl}
+                      alt="Post content"
+                      className="rounded-lg max-h-96 object-cover bg-gray-100"
+                    />
+                  </div>
+                )}
+
+                <div className="mt-4 flex items-center space-x-6 text-gray-500 text-sm">
+                  <Link
+                    href={`/post/${targetId}`}
+                    className="flex items-center space-x-1 hover:text-blue-500 transition-colors"
+                    aria-label="Comments"
+                  >
+                    <MessageCircle size={16} />
+                    <span>{post.commentCount}</span>
+                  </Link>
+                  <button
+                    className={`flex items-center space-x-1 transition-colors ${
+                      post.retweetedByMe ? 'text-green-600' : 'hover:text-green-500'
+                    } ${pendingFlags.retweet ? 'opacity-60' : ''}`}
+                    type="button"
+                    aria-label="Retweets"
+                    aria-pressed={post.retweetedByMe}
+                    onClick={() => handleRetweetToggle(post)}
+                    disabled={pendingFlags.retweet}
+                  >
+                    <Repeat2 size={16} />
+                    <span>{post.retweetCount}</span>
+                  </button>
+                  <button
+                    className={`flex items-center space-x-1 transition-colors ${
+                      post.likedByMe ? 'text-red-500' : 'hover:text-red-500'
+                    } ${pendingFlags.like ? 'opacity-60' : ''}`}
+                    type="button"
+                    aria-label="Likes"
+                    aria-pressed={post.likedByMe}
+                    onClick={() => handleLikeToggle(post)}
+                    disabled={pendingFlags.like}
+                  >
+                    <Heart size={16} />
+                    <span>{post.likeCount}</span>
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-3 text-sm text-gray-600">
+                  {preview.length > 0 && (
+                    <div className="space-y-3">
+                      {preview.map((comment) => (
+                        <div key={comment.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                          <div className="text-xs text-gray-500">
+                            {comment.author.displayName || comment.author.username} @
+                            {comment.author.username}
+                          </div>
+                          <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">
+                            {comment.content}
+                          </p>
+                          {comment.replyCount > 0 && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              {comment.replyCount} repl{comment.replyCount === 1 ? 'y' : 'ies'}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {user ? (
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        handleCommentSubmit(post);
+                      }}
+                      className="space-y-2"
+                    >
+                      <textarea
+                        value={commentDrafts[targetId] ?? ''}
+                        onChange={(event) =>
+                          setCommentDrafts((prev) => ({
+                            ...prev,
+                            [targetId]: event.target.value,
+                          }))
+                        }
+                        placeholder="Add a comment..."
+                        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none"
+                        rows={2}
+                        maxLength={280}
+                      />
+                      {commentError && <p className="text-xs text-red-600">{commentError}</p>}
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href={`/post/${targetId}`}
+                          className="text-xs font-semibold text-gray-600 hover:underline"
+                        >
+                          View all comments
+                        </Link>
+                        <button
+                          type="submit"
+                          disabled={isCommenting}
+                          className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
+                        >
+                          {isCommenting ? 'Posting...' : 'Comment'}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <p className="text-xs text-gray-500">
+                      Log in to comment.{' '}
+                      <Link href={`/post/${targetId}`} className="font-semibold hover:underline">
+                        View all comments
+                      </Link>
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {hasMore && (
         <div className="text-center pt-4">

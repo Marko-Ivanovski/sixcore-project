@@ -23,6 +23,13 @@ export interface UserSearchResult {
 
 export interface PostItem {
   id: string;
+  kind: 'ORIGINAL' | 'RETWEET';
+  originalPostId?: string;
+  repostedBy?: {
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
   content: string | null;
   imageUrl: string | null;
   visibility: 'PUBLIC' | 'PRIVATE';
@@ -37,6 +44,19 @@ export interface PostItem {
   retweetCount: number;
   likedByMe: boolean;
   retweetedByMe: boolean;
+  commentsPreview?: CommentPreview[];
+}
+
+export interface CommentPreview {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  };
+  replyCount: number;
 }
 
 export interface PostsResponse {

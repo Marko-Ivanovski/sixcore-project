@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   ParseIntPipe,
   Post,
   Query,
@@ -18,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { PostsService } from './posts.service';
 
 @Controller('posts')
@@ -63,6 +65,27 @@ export class PostsController {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const userId = (req as any).user.sub;
     return this.postsService.createPost(userId, dto);
+  }
+
+  @Patch(':postId')
+  @UseGuards(JwtAuthGuard)
+  async updatePost(
+    @Param('postId') postId: string,
+    @Body() dto: UpdatePostDto,
+    @Req() req: Request,
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const userId = (req as any).user.sub;
+    return this.postsService.updatePost(postId, userId, dto);
+  }
+
+  @Delete(':postId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deletePost(@Param('postId') postId: string, @Req() req: Request) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const userId = (req as any).user.sub;
+    await this.postsService.deletePost(postId, userId);
   }
 
   @Get(':postId')
