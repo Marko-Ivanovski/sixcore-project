@@ -36,7 +36,7 @@ export class UploadsController {
           file: Express.Multer.File,
           callback: (error: Error | null, destination: string) => void,
         ) => {
-          const allowedFolders = ['avatars', 'posts'];
+          const allowedFolders = ['avatars', 'posts', 'tweets'];
           const queryFolder = req.query.folder as string;
           const folder = allowedFolders.includes(queryFolder)
             ? queryFolder
@@ -79,7 +79,7 @@ export class UploadsController {
     file: Express.Multer.File,
     @Query('folder') folder?: string,
   ) {
-    const allowedFolders = ['avatars', 'posts'];
+    const allowedFolders = ['avatars', 'posts', 'tweets'];
     const targetFolder =
       folder && allowedFolders.includes(folder) ? folder : 'misc';
     // Use the same base URL that the frontend uses to access the API

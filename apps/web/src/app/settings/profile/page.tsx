@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { updateProfile } from '@/lib/users';
-import { apiFetch } from '@/lib/api';
 import { Modal } from '@/components/ui/Modal';
 import { checkPasswordStrength } from '@/utils/validation';
+import { uploadImage, validateImageFile } from '@/lib/uploads';
 
 export default function EditProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -18,6 +18,7 @@ export default function EditProfilePage() {
   const [bio, setBio] = useState(user?.bio || '');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(user?.avatarUrl || null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   // Sync state with user data when it loads
   useEffect(() => {
@@ -48,23 +49,26 @@ export default function EditProfilePage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        setAvatarError(validationError);
+        e.target.value = '';
+        return;
+      }
+
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       setAvatarFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+      setAvatarError(null);
     }
   };
 
   const uploadAvatar = async (): Promise<string | null> => {
     if (!avatarFile) return null;
-    const formData = new FormData();
-    formData.append('file', avatarFile);
-    
-    // Use apiFetch to ensure we hit the backend (localhost:3001)
-    const data = await apiFetch<{ url: string }>('/api/uploads?folder=avatars', {
-      method: 'POST',
-      body: formData,
-    });
-    
-    return data.url;
+    return uploadImage(avatarFile, 'avatars');
   };
 
   const handleProfileSave = async (e: React.FormEvent) => {
@@ -86,6 +90,7 @@ export default function EditProfilePage() {
       
       await refreshUser();
       setAvatarFile(null); // Clear the file so preview uses the server URL
+      setAvatarError(null);
       setMessage({ type: 'success', text: 'Profile updated successfully' });
     } catch (err: any) {
        console.error(err);
@@ -238,6 +243,7 @@ export default function EditProfilePage() {
                     <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
                   </label>
                 </div>
+                {avatarError && <p className="mt-2 text-xs text-red-600">{avatarError}</p>}
               </div>
 
               <div>

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { PostList } from '@/components/users/PostList';
 import { ApiError } from '@/lib/api';
 import { createPost } from '@/lib/users';
+import { uploadImage, validateImageFile } from '@/lib/uploads';
 
 
 
@@ -16,12 +17,42 @@ export default function FeedPage() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
 
+  const trimmedDraft = draft.trim();
   const canPost =
     Boolean(user) &&
-    draft.trim().length > 0 &&
-    draft.trim().length <= 280 &&
+    trimmedDraft.length <= 280 &&
+    (trimmedDraft.length > 0 || Boolean(imageFile)) &&
     !posting;
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setImageError(validationError);
+      event.target.value = '';
+      return;
+    }
+
+    clearImage();
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setImageError(null);
+  };
+
+  const clearImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImageFile(null);
+    setImagePreview(null);
+    setImageError(null);
+  };
 
   const handlePost = async () => {
     if (!user || !canPost) return;
@@ -29,15 +60,20 @@ export default function FeedPage() {
     setPosting(true);
     setError(null);
     try {
+      const imageUrl = imageFile ? await uploadImage(imageFile, 'tweets') : undefined;
       await createPost({
-        content: draft.trim(),
+        content: trimmedDraft ? trimmedDraft : undefined,
+        ...(imageUrl ? { imageUrl } : {}),
         visibility,
       });
       setDraft('');
       setVisibility('PUBLIC');
       setRefreshKey((prev) => prev + 1);
+      clearImage();
     } catch (err) {
       if (err instanceof ApiError) {
+        setError(err.message || 'Unable to post');
+      } else if (err instanceof Error) {
         setError(err.message || 'Unable to post');
       } else {
         setError('Unable to post');
@@ -78,6 +114,39 @@ export default function FeedPage() {
                 rows={3}
                 maxLength={280}
               />
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                <label className="cursor-pointer rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                  Add image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={!user || posting}
+                    onChange={handleImageChange}
+                  />
+                </label>
+                {imageFile && (
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                    disabled={posting}
+                  >
+                    Remove image
+                  </button>
+                )}
+                {imageError && <span className="text-xs text-red-600">{imageError}</span>}
+              </div>
+              {imagePreview && (
+                <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreview}
+                    alt="Image preview"
+                    className="max-h-80 w-full object-cover"
+                  />
+                </div>
+              )}
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
                 <div className="flex items-center gap-3">
                   <span>{draft.length}/280</span>
