@@ -17,6 +17,11 @@ enum PostKind {
   RETWEET
 }
 
+enum PostVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -42,6 +47,7 @@ model Post {
   content        String?
   imageUrl       String?
   kind           PostKind  @default(ORIGINAL)
+  visibility     PostVisibility @default(PUBLIC)
   originalPostId String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

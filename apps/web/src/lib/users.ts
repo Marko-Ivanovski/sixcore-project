@@ -18,6 +18,7 @@ export interface PostItem {
   id: string;
   content: string | null;
   imageUrl: string | null;
+  visibility: 'PUBLIC' | 'PRIVATE';
   createdAt: string;
   author: {
     username: string;
@@ -28,6 +29,7 @@ export interface PostItem {
   commentCount: number;
   retweetCount: number;
   likedByMe: boolean;
+  retweetedByMe: boolean;
 }
 
 export interface PostsResponse {
@@ -79,6 +81,22 @@ export async function updateProfile(data: UpdateProfileInput): Promise<UserProfi
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
+  });
+}
+
+export interface CreatePostInput {
+  content?: string;
+  imageUrl?: string;
+  visibility?: 'PUBLIC' | 'PRIVATE';
+}
+
+export async function createPost(input: CreatePostInput): Promise<PostItem> {
+  return apiFetch<PostItem>('/api/posts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
   });
 }
 

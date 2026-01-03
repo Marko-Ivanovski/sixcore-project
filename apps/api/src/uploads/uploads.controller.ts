@@ -1,20 +1,33 @@
 import {
   Controller,
+  FileTypeValidator,
   Post,
+  Query,
   UploadedFile,
-  UseInterceptors,
   ParseFilePipe,
   MaxFileSizeValidator,
-  Query,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { Request } from 'express';
+import { randomUUID } from 'crypto';
 import { diskStorage } from 'multer';
+import path from 'path';
 import * as fs from 'fs';
+
+const MIME_EXTENSION_MAP: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
 
 @Controller('uploads')
 export class UploadsController {
   @Post()
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -41,8 +54,12 @@ export class UploadsController {
           file: Express.Multer.File,
           callback: (error: Error | null, filename: string) => void,
         ) => {
-          const originalName = (file as any).originalname;
-          callback(null, originalName);
+          const extension =
+            MIME_EXTENSION_MAP[file.mimetype] ??
+            path.extname((file as any).originalname);
+          const safeExtension = extension ? extension.toLowerCase() : '';
+          const fileName = `${randomUUID()}${safeExtension}`;
+          callback(null, fileName);
         },
       }),
     }),
@@ -52,6 +69,9 @@ export class UploadsController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({
+            fileType: /(jpeg|jpg|png|webp|gif)$/i,
+          }),
         ],
       }),
     )

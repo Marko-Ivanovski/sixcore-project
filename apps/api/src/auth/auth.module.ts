@@ -4,6 +4,7 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 import { getAccessTokenSecret } from './auth.constants';
 
 @Module({
@@ -16,7 +17,7 @@ import { getAccessTokenSecret } from './auth.constants';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard],
-  exports: [AuthService, JwtAuthGuard, JwtModule],
+  providers: [AuthService, JwtAuthGuard, OptionalJwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard, OptionalJwtAuthGuard, JwtModule],
 })
 export class AuthModule {}

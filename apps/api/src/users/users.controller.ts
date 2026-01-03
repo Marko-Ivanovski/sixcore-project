@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { UpdateUserDto } from './dto/update-user.dto';
 import type { Request } from 'express';
 
@@ -24,6 +25,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get(':username')
+  @UseGuards(OptionalJwtAuthGuard)
   async getUserProfile(
     @Param('username') username: string,
     @Req() req: Request,
@@ -44,6 +46,7 @@ export class UsersController {
   }
 
   @Get(':username/posts')
+  @UseGuards(OptionalJwtAuthGuard)
   async getUserPosts(
     @Param('username') username: string,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
