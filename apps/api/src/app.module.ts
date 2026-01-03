@@ -10,7 +10,7 @@ import { PostsModule } from './posts/posts.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'),
+      rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/api/uploads',
     }),
     PrismaModule,

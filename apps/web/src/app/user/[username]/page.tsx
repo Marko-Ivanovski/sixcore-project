@@ -49,8 +49,8 @@ export default function UserPage() {
   if (error || !user) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[50vh] text-center">
-        <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-200 mb-4">404</h1>
-        <p className="text-xl text-gray-600 dark:text-gray-400">{error || 'User not found'}</p>
+        <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
+        <p className="text-xl text-gray-600">{error || 'User not found'}</p>
       </div>
     );
   }
@@ -59,7 +59,7 @@ export default function UserPage() {
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <UserProfile user={user} />
       <div className="mt-8">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Posts</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Posts</h2>
         <PostList username={user.username} />
       </div>
     </div>
