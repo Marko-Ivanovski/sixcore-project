@@ -70,7 +70,8 @@ export class UploadsController {
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
           new FileTypeValidator({
-            fileType: /(jpeg|jpg|png|webp|gif)$/i,
+            fileType: /image\/(jpeg|jpg|png|webp|gif)$/i,
+            fallbackToMimetype: true,
           }),
         ],
       }),

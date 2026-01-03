@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Heart, Lock, MessageCircle, Repeat2 } from 'lucide-react';
 import { getUserPosts, getTimeline, PostItem } from '../../lib/users';
+import { buildAvatarUrl, setAvatarFallback } from '@/utils/avatar';
 
 interface PostListProps {
   username?: string; // Optional: if type is 'user'
@@ -62,7 +63,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
 
   if (posts.length === 0) {
     return (
-      <div className="text-center py-10 text-gray-500 dark:text-gray-400 background-secondary rounded-lg">
+      <div className="card text-center py-10 text-gray-500">
         No posts yet.
       </div>
     );
@@ -71,20 +72,18 @@ export function PostList({ username, type = 'user' }: PostListProps) {
   return (
     <div className="space-y-4">
       {posts.map((post) => (
-        <div key={post.id} className="bg-white dark:bg-zinc-900 shadow rounded-lg p-6">
+        <div key={post.id} className="card p-6">
           <div className="flex items-start space-x-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={
-                post.author.avatarUrl ||
-                `https://ui-avatars.com/api/?name=${post.author.username}`
-              }
+              src={buildAvatarUrl(post.author.avatarUrl, post.author.username)}
               alt={post.author.username}
               className="h-10 w-10 rounded-full object-cover"
+              onError={(event) => setAvatarFallback(event, post.author.username)}
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-gray-900 dark:text-white truncate">
+                <span className="font-bold text-gray-900 truncate">
                   {post.author.displayName || post.author.username}
                 </span>
                 <span className="text-sm text-gray-500 truncate">
@@ -103,7 +102,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
               </div>
 
               {post.content && (
-                <p className="mt-2 text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                <p className="mt-2 text-gray-800 whitespace-pre-wrap">
                   {post.content}
                 </p>
               )}
@@ -114,7 +113,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                   <img
                     src={post.imageUrl}
                     alt="Post content"
-                    className="rounded-lg max-h-96 object-cover bg-gray-100 dark:bg-zinc-800"
+                    className="rounded-lg max-h-96 object-cover bg-gray-100"
                   />
                 </div>
               )}
@@ -159,7 +158,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
           <button
             onClick={() => fetchPosts()}
             disabled={loading}
-            className="text-blue-600 hover:text-blue-500 dark:text-blue-400 font-medium disabled:opacity-50"
+            className="text-blue-600 hover:text-blue-500 font-medium disabled:opacity-50"
           >
             {loading ? 'Loading more...' : 'Load more'}
           </button>

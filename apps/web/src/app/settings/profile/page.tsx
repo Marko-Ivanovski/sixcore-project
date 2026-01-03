@@ -24,7 +24,7 @@ export default function EditProfilePage() {
     if (user) {
       setDisplayName(user.displayName || '');
       setBio(user.bio || '');
-      setPreviewUrl(user.avatarUrl || null);
+      setPreviewUrl(user.avatarUrl ? encodeURI(user.avatarUrl) : null);
     }
   }, [user]);
 
@@ -221,7 +221,12 @@ export default function EditProfilePage() {
                   <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border border-gray-200">
                     {previewUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                        onError={() => setPreviewUrl(null)}
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
                         No Photo

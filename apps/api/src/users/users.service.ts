@@ -52,6 +52,34 @@ export class UsersService {
     return user as UserRecord | null;
   }
 
+  async searchUsers(query: string, limit: number) {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    const safeLimit = Math.min(Math.max(limit, 1), 20);
+
+    return this.prisma.user.findMany({
+      where: {
+        username: {
+          contains: trimmed,
+          mode: 'insensitive',
+        },
+      },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+      },
+      orderBy: {
+        username: 'asc',
+      },
+      take: safeLimit,
+    });
+  }
+
   async createUser(input: CreateUserInput): Promise<UserRecord> {
     const user = await this.prisma.user.create({
       data: {

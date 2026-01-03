@@ -24,6 +24,22 @@ import type { Request } from 'express';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get()
+  async searchUsers(
+    @Query('search', new DefaultValuePipe('')) search: string,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    if (limit < 1 || limit > 20) {
+      limit = 10;
+    }
+
+    if (!search.trim()) {
+      return [];
+    }
+
+    return this.usersService.searchUsers(search, limit);
+  }
+
   @Get(':username')
   @UseGuards(OptionalJwtAuthGuard)
   async getUserProfile(

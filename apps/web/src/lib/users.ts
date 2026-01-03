@@ -14,6 +14,13 @@ export interface UserProfile {
   isFollowing: boolean;
 }
 
+export interface UserSearchResult {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
 export interface PostItem {
   id: string;
   content: string | null;
@@ -42,6 +49,20 @@ export interface PostsResponse {
 
 export async function getUserProfile(username: string): Promise<UserProfile> {
   return apiFetch<UserProfile>(`/api/users/${username}`);
+}
+
+export async function searchUsers(
+  query: string,
+  limit = 10,
+  signal?: AbortSignal,
+): Promise<UserSearchResult[]> {
+  const params = new URLSearchParams({
+    search: query,
+    limit: String(limit),
+  });
+  return apiFetch<UserSearchResult[]>(`/api/users?${params.toString()}`, {
+    signal,
+  });
 }
 
 export async function getUserPosts(
