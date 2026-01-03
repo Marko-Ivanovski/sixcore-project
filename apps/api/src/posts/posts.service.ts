@@ -9,19 +9,8 @@ import { Post, PostKind, PostVisibility, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
-
-type PostWithCounts = Post & {
-  author: {
-    username: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-  };
-  _count: {
-    likes: number;
-    comments: number;
-    retweets: number;
-  };
-};
+import { UpdatePostDto } from './dto/update-post.dto';
+import { mapPostsForViewer, postInclude } from './post.mapper';
 
 @Injectable()
 export class PostsService {
@@ -53,28 +42,13 @@ export class PostsService {
         take: limit + 1,
         skip: offset,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        include: {
-          author: {
-            select: {
-              username: true,
-              displayName: true,
-              avatarUrl: true,
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
-              retweets: true,
-            },
-          },
-        },
+        include: postInclude,
       }),
     ]);
 
     const hasMore = posts.length > limit;
     const items = hasMore ? posts.slice(0, limit) : posts;
-    const mappedItems = await this.mapPosts(items, viewerId);
+    const mappedItems = await mapPostsForViewer(this.prisma, items, viewerId);
 
     return {
       items: mappedItems,
@@ -101,70 +75,49 @@ export class PostsService {
         kind: PostKind.ORIGINAL,
         visibility: dto.visibility ?? PostVisibility.PUBLIC,
       },
-      include: {
-        author: {
-          select: {
-            username: true,
-            displayName: true,
-            avatarUrl: true,
-          },
-        },
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-            retweets: true,
-          },
-        },
-      },
+      include: postInclude,
     });
 
-    const [mapped] = await this.mapPosts([post], authorId);
+    const [mapped] = await mapPostsForViewer(this.prisma, [post], authorId);
     return mapped;
   }
 
   async getPostById(postId: string, viewerId?: string) {
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
-      include: {
-        author: {
-          select: {
-            username: true,
-            displayName: true,
-            avatarUrl: true,
-          },
-        },
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-            retweets: true,
-          },
-        },
-      },
+      include: postInclude,
     });
 
     if (!post) {
       throw new NotFoundException('Post not found');
     }
 
-    const canView = await this.canViewPost(post, viewerId);
+    const target =
+      post.kind === PostKind.RETWEET && post.originalPost
+        ? post.originalPost
+        : post;
+    if (!target) {
+      throw new NotFoundException('Post not found');
+    }
+
+    const canView = await this.canViewPost(target, viewerId);
     if (!canView) {
       throw new ForbiddenException('Post is private');
     }
 
-    const [mapped] = await this.mapPosts([post], viewerId);
+    const [mapped] = await mapPostsForViewer(this.prisma, [post], viewerId);
     return mapped;
   }
 
   async likePost(postId: string, userId: string) {
-    await this.ensureCanViewPost(postId, userId);
+    const target = await this.resolveTargetPost(postId, userId);
+    const targetId = target.id;
 
     try {
       await this.prisma.like.create({
         data: {
           userId,
-          postId,
+          postId: targetId,
         },
       });
     } catch (error: any) {
@@ -173,19 +126,22 @@ export class PostsService {
       }
     }
 
-    const likeCount = await this.prisma.like.count({ where: { postId } });
+    const likeCount = await this.prisma.like.count({
+      where: { postId: targetId },
+    });
     return { likedByMe: true, likeCount };
   }
 
   async unlikePost(postId: string, userId: string) {
-    await this.ensureCanViewPost(postId, userId);
+    const target = await this.resolveTargetPost(postId, userId);
+    const targetId = target.id;
 
     try {
       await this.prisma.like.delete({
         where: {
           userId_postId: {
             userId,
-            postId,
+            postId: targetId,
           },
         },
       });
@@ -195,7 +151,9 @@ export class PostsService {
       }
     }
 
-    const likeCount = await this.prisma.like.count({ where: { postId } });
+    const likeCount = await this.prisma.like.count({
+      where: { postId: targetId },
+    });
     return { likedByMe: false, likeCount };
   }
 
@@ -297,12 +255,15 @@ export class PostsService {
     offset: number,
     viewerId?: string,
   ) {
-    await this.ensureCanViewPost(postId, viewerId);
+    const targetPost = await this.resolveTargetPost(postId, viewerId);
+    const targetPostId = targetPost.id;
 
     const [total, comments] = await Promise.all([
-      this.prisma.comment.count({ where: { postId } }),
+      this.prisma.comment.count({
+        where: { postId: targetPostId, parentCommentId: null },
+      }),
       this.prisma.comment.findMany({
-        where: { postId },
+        where: { postId: targetPostId, parentCommentId: null },
         take: limit + 1,
         skip: offset,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -312,6 +273,18 @@ export class PostsService {
               username: true,
               displayName: true,
               avatarUrl: true,
+            },
+          },
+          replies: {
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            include: {
+              author: {
+                select: {
+                  username: true,
+                  displayName: true,
+                  avatarUrl: true,
+                },
+              },
             },
           },
         },
@@ -331,18 +304,33 @@ export class PostsService {
   }
 
   async addComment(postId: string, userId: string, dto: CreateCommentDto) {
-    await this.ensureCanViewPost(postId, userId);
+    const targetPost = await this.resolveTargetPost(postId, userId);
+    const targetPostId = targetPost.id;
 
     const content = dto.content.trim();
     if (!content) {
       throw new BadRequestException('Comment cannot be empty');
     }
 
-    return this.prisma.comment.create({
+    let parentCommentId: string | null = null;
+    if (dto.parentCommentId) {
+      const parentComment = await this.prisma.comment.findUnique({
+        where: { id: dto.parentCommentId },
+      });
+
+      if (!parentComment || parentComment.postId !== targetPostId) {
+        throw new BadRequestException('Invalid parent comment');
+      }
+
+      parentCommentId = parentComment.id;
+    }
+
+    const comment = await this.prisma.comment.create({
       data: {
-        postId,
+        postId: targetPostId,
         authorId: userId,
         content,
+        parentCommentId,
       },
       include: {
         author: {
@@ -354,48 +342,107 @@ export class PostsService {
         },
       },
     });
+
+    return { ...comment, replies: [] };
   }
 
-  private async mapPosts(items: PostWithCounts[], viewerId?: string) {
-    const postIds = items.map((post) => post.id);
-    let likedPostIds = new Set<string>();
-    let retweetedPostIds = new Set<string>();
-
-    if (viewerId && postIds.length > 0) {
-      const [likes, retweets] = await Promise.all([
-        this.prisma.like.findMany({
-          where: {
-            userId: viewerId,
-            postId: { in: postIds },
-          },
-          select: { postId: true },
-        }),
-        this.prisma.post.findMany({
-          where: {
-            authorId: viewerId,
-            kind: PostKind.RETWEET,
-            originalPostId: { in: postIds },
-          },
-          select: { originalPostId: true },
-        }),
-      ]);
-
-      likedPostIds = new Set(likes.map((like) => like.postId));
-      retweetedPostIds = new Set(
-        retweets
-          .map((retweet) => retweet.originalPostId)
-          .filter((id): id is string => Boolean(id)),
-      );
+  async updatePost(postId: string, userId: string, dto: UpdatePostDto) {
+    const post = await this.prisma.post.findUnique({ where: { id: postId } });
+    if (!post) {
+      throw new NotFoundException('Post not found');
     }
 
-    return items.map((post) => ({
-      ...post,
-      likeCount: post._count.likes,
-      commentCount: post._count.comments,
-      retweetCount: post._count.retweets,
-      likedByMe: likedPostIds.has(post.id),
-      retweetedByMe: retweetedPostIds.has(post.id),
-    }));
+    if (post.authorId !== userId) {
+      throw new ForbiddenException('Cannot edit this post');
+    }
+
+    if (post.kind === PostKind.RETWEET) {
+      throw new BadRequestException('Retweets cannot be edited');
+    }
+
+    const content =
+      typeof dto.content === 'string' ? dto.content.trim() : undefined;
+    const imageUrl =
+      typeof dto.imageUrl === 'string' ? dto.imageUrl.trim() : undefined;
+
+    const data: Prisma.PostUpdateInput = {};
+    if (dto.content !== undefined) {
+      data.content = content ? content : null;
+    }
+    if (dto.imageUrl !== undefined) {
+      data.imageUrl = imageUrl ? imageUrl : null;
+    }
+    if (dto.visibility !== undefined) {
+      data.visibility = dto.visibility;
+    }
+
+    const nextContent =
+      data.content !== undefined ? (data.content as string | null) : post.content;
+    const nextImage =
+      data.imageUrl !== undefined
+        ? (data.imageUrl as string | null)
+        : post.imageUrl;
+
+    if (!nextContent && !nextImage) {
+      throw new BadRequestException('Content or image is required');
+    }
+
+    const updated = await this.prisma.post.update({
+      where: { id: postId },
+      data,
+      include: postInclude,
+    });
+
+    const [mapped] = await mapPostsForViewer(this.prisma, [updated], userId);
+    return mapped;
+  }
+
+  async deletePost(postId: string, userId: string) {
+    const post = await this.prisma.post.findUnique({ where: { id: postId } });
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    if (post.authorId !== userId) {
+      throw new ForbiddenException('Cannot delete this post');
+    }
+
+    if (post.kind === PostKind.RETWEET) {
+      await this.prisma.post.delete({ where: { id: postId } });
+      return;
+    }
+
+    await this.prisma.post.deleteMany({
+      where: {
+        kind: PostKind.RETWEET,
+        originalPostId: postId,
+      },
+    });
+
+    await this.prisma.post.delete({ where: { id: postId } });
+  }
+
+  private async resolveTargetPost(postId: string, viewerId?: string) {
+    const post = await this.prisma.post.findUnique({
+      where: { id: postId },
+      include: { originalPost: true },
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    const target =
+      post.kind === PostKind.RETWEET && post.originalPost
+        ? post.originalPost
+        : post;
+
+    const canView = await this.canViewPost(target, viewerId);
+    if (!canView) {
+      throw new ForbiddenException('Post is private');
+    }
+
+    return target;
   }
 
   private async buildVisibilityWhere(viewerId?: string) {
@@ -424,21 +471,6 @@ export class PostsService {
     });
 
     return follows.map((follow) => follow.followingId);
-  }
-
-  private async ensureCanViewPost(postId: string, viewerId?: string) {
-    const post = await this.prisma.post.findUnique({ where: { id: postId } });
-
-    if (!post) {
-      throw new NotFoundException('Post not found');
-    }
-
-    const canView = await this.canViewPost(post, viewerId);
-    if (!canView) {
-      throw new ForbiddenException('Post is private');
-    }
-
-    return post;
   }
 
   private async canViewPost(post: Post, viewerId?: string) {
