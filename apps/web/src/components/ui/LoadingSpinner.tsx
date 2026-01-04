@@ -12,6 +12,6 @@ const sizeClasses: Record<NonNullable<LoadingSpinnerProps['size']>, string> = {
 };
 
 export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) {
-  const base = `${sizeClasses[size]} animate-spin rounded-full border-2 border-gray-200 border-t-gray-500`;
+  const base = `${sizeClasses[size]} animate-spin rounded-full border-2 border-gray-200 border-t-gray-500 dark:border-slate-700 dark:border-t-slate-300`;
   return <div className={className ? `${base} ${className}` : base} />;
 }

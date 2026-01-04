@@ -7,8 +7,6 @@ import { ApiError } from '@/lib/api';
 import { createPost } from '@/lib/users';
 import { uploadImage, validateImageFile } from '@/lib/uploads';
 
-
-
 export default function FeedPage() {
   const { user } = useAuth();
   const [draft, setDraft] = useState('');
@@ -97,11 +95,11 @@ export default function FeedPage() {
             itemScope
             itemType="https://schema.org/BlogPosting"
           >
-            <div className="border-b border-gray-100 px-4 py-3">
-              <h1 className="text-lg font-semibold text-gray-900" itemProp="headline">
+            <div className="border-b border-gray-100 px-4 py-3 dark:border-slate-800">
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-slate-100" itemProp="headline">
                 Home
               </h1>
-              <p className="text-sm text-gray-500" itemProp="description">
+              <p className="text-sm text-gray-500 dark:text-slate-400" itemProp="description">
                 A clean feed experience for mobile and desktop.
               </p>
             </div>
@@ -110,12 +108,12 @@ export default function FeedPage() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Share something..."
-                className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-gray-400 focus:bg-white"
+                className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-gray-400 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:bg-slate-950"
                 rows={3}
                 maxLength={280}
               />
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                <label className="cursor-pointer rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-slate-400">
+                <label className="cursor-pointer rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
                   Add image
                   <input
                     type="file"
@@ -129,16 +127,16 @@ export default function FeedPage() {
                   <button
                     type="button"
                     onClick={clearImage}
-                    className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                    className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                     disabled={posting}
                   >
                     Remove image
                   </button>
                 )}
-                {imageError && <span className="text-xs text-red-600">{imageError}</span>}
+                {imageError && <span className="text-xs text-red-600 dark:text-red-300">{imageError}</span>}
               </div>
               {imagePreview && (
-                <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-900">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imagePreview}
@@ -147,15 +145,15 @@ export default function FeedPage() {
                   />
                 </div>
               )}
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500 dark:text-slate-400">
                 <div className="flex items-center gap-3">
                   <span>{draft.length}/280</span>
                   <label className="flex items-center gap-2">
-                    <span className="text-xs uppercase tracking-wide text-gray-500">Visibility</span>
+                    <span className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Visibility</span>
                     <select
                       value={visibility}
                       onChange={(event) => setVisibility(event.target.value as 'PUBLIC' | 'PRIVATE')}
-                      className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
+                      className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                       disabled={!user}
                     >
                       <option value="PUBLIC">Public</option>
@@ -167,23 +165,23 @@ export default function FeedPage() {
                   type="button"
                   disabled={!canPost}
                   onClick={handlePost}
-                  className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
+                  className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                 >
                   {posting ? 'Posting...' : 'Post'}
                 </button>
               </div>
               {!user && (
-                <p className="mt-2 text-xs text-gray-500">Log in to create a post.</p>
+                <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">Log in to create a post.</p>
               )}
-              {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+              {error && <p className="mt-2 text-xs text-red-600 dark:text-red-300">{error}</p>}
             </div>
-            <div className="border-t border-gray-100 px-4 py-3 text-sm font-semibold text-gray-800 flex gap-4">
+            <div className="border-t border-gray-100 px-4 py-3 text-sm font-semibold text-gray-800 flex gap-4 dark:border-slate-800 dark:text-slate-100">
               <button
                 onClick={() => setFeedType('timeline')}
                 className={`pb-2 border-b-2 transition-colors ${
                   feedType === 'timeline'
-                    ? 'border-gray-900 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-gray-900 text-gray-900 dark:border-slate-100 dark:text-slate-100'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
               >
                 All Posts
@@ -193,8 +191,8 @@ export default function FeedPage() {
                   onClick={() => setFeedType('following')}
                   className={`pb-2 border-b-2 transition-colors ${
                     feedType === 'following'
-                      ? 'border-gray-900 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                      ? 'border-gray-900 text-gray-900 dark:border-slate-100 dark:text-slate-100'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
                   Following
@@ -202,7 +200,7 @@ export default function FeedPage() {
               )}
             </div>
             <div
-              className="border-t border-gray-100 bg-gray-50 px-4 py-6 text-sm text-gray-600"
+              className="border-t border-gray-100 bg-gray-50 px-4 py-6 text-sm text-gray-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300"
               itemProp="articleBody"
             >
               <PostList

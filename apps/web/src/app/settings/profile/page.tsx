@@ -177,16 +177,18 @@ export default function EditProfilePage() {
   };
 
   if (!user) {
-      return <div className="p-8 text-center">Please log in.</div>;
+      return <div className="p-8 text-center text-gray-600 dark:text-slate-300">Please log in.</div>;
   }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold text-gray-900">Edit Profile</h1>
+      <h1 className="mb-6 text-3xl font-bold text-gray-900 dark:text-slate-100">Edit Profile</h1>
       
       {message && (
         <div className={`mb-6 rounded-lg p-4 ${
-          message.type === 'success' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'
+          message.type === 'success'
+            ? 'bg-green-100 text-green-700 border border-green-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-900/60'
+            : 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900/60'
         }`}>
           {message.text}
         </div>
@@ -199,8 +201,8 @@ export default function EditProfilePage() {
               onClick={() => setActiveTab('profile')}
               className={`rounded-lg px-4 py-2 text-left text-sm font-medium transition-colors ${
                 activeTab === 'profile'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               Profile Information
@@ -209,8 +211,8 @@ export default function EditProfilePage() {
               onClick={() => setActiveTab('account')}
               className={`rounded-lg px-4 py-2 text-left text-sm font-medium transition-colors ${
                 activeTab === 'account'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               Account Settings
@@ -218,15 +220,15 @@ export default function EditProfilePage() {
           </nav>
         </aside>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 dark:border-slate-800 dark:bg-slate-900">
           {activeTab === 'profile' ? (
             <form onSubmit={handleProfileSave} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">
                   Profile Photo
                 </label>
                 <div className="flex items-center gap-6">
-                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border border-gray-200">
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border border-gray-200 dark:border-slate-700">
                     {previewUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
@@ -236,21 +238,21 @@ export default function EditProfilePage() {
                         onError={() => setPreviewUrl(null)}
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400">
+                      <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500">
                         No Photo
                       </div>
                     )}
                   </div>
-                  <label className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition">
+                  <label className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
                     Change Photo
                     <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
                   </label>
                 </div>
-                {avatarError && <p className="mt-2 text-xs text-red-600">{avatarError}</p>}
+                {avatarError && <p className="mt-2 text-xs text-red-600 dark:text-red-300">{avatarError}</p>}
               </div>
 
               <div>
-                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-slate-300">
                   Display Name
                 </label>
                 <input
@@ -258,13 +260,13 @@ export default function EditProfilePage() {
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 sm:text-sm p-2 border"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 sm:text-sm p-2 border dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
                   placeholder="Your Name"
                 />
               </div>
 
               <div>
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-slate-300">
                   Bio
                 </label>
                 <textarea
@@ -272,7 +274,7 @@ export default function EditProfilePage() {
                   rows={4}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 sm:text-sm p-2 border"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 sm:text-sm p-2 border dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
                   placeholder="Tell us about yourself"
                 />
               </div>
@@ -281,7 +283,7 @@ export default function EditProfilePage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="rounded-full bg-gray-900 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 disabled:opacity-50"
+                  className="rounded-full bg-gray-900 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                 >
                   {loading ? 'Saving...' : 'Save Profile'}
                 </button>
@@ -290,27 +292,27 @@ export default function EditProfilePage() {
           ) : (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-medium text-gray-900">Email Address</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Current email: <span className="font-semibold text-gray-900">{user.email}</span>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Email Address</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                  Current email: <span className="font-semibold text-gray-900 dark:text-slate-100">{user.email}</span>
                 </p>
                 <button
                   onClick={() => setIsEmailModalOpen(true)}
-                  className="mt-3 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                  className="mt-3 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   type="button"
                 >
                   Change Email
                 </button>
               </div>
 
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-medium text-gray-900">Password</h3>
-                <p className="mt-1 text-sm text-gray-500">
+              <div className="border-t border-gray-200 pt-6 dark:border-slate-800">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100">Password</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
                   Update your password associated with your account.
                 </p>
                 <button
                   onClick={() => setIsPasswordModalOpen(true)}
-                  className="mt-3 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                  className="mt-3 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   type="button"
                 >
                   Change Password
@@ -329,51 +331,51 @@ export default function EditProfilePage() {
       >
         <form onSubmit={handleEmailSave} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Old Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Old Email</label>
               <input 
                 type="email"
                 required
                 value={oldEmail}
                 onChange={e => setOldEmail(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500"
+                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
                 placeholder="Enter current email"
               />
             </div>
              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">New Email</label>
               <input 
                 type="email"
                 required
                 value={newEmail}
                 onChange={e => setNewEmail(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500"
+                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
                 placeholder="Enter new email"
               />
             </div>
              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Confirm New Email</label>
               <input 
                 type="email"
                 required
                 value={confirmNewEmail}
                 onChange={e => setConfirmNewEmail(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500"
+                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
                 placeholder="Confirm new email"
               />
             </div>
-            {emailError && <p className="text-sm text-red-600">{emailError}</p>}
+            {emailError && <p className="text-sm text-red-600 dark:text-red-300">{emailError}</p>}
             <div className="flex justify-end gap-3 mt-6">
                 <button 
                   type="button"
                   onClick={() => setIsEmailModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
                   disabled={loading || !newEmail || !oldEmail || !confirmNewEmail}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-full disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-full disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                 >
                   {loading ? 'Saving...' : 'Save'}
                 </button>
@@ -389,20 +391,20 @@ export default function EditProfilePage() {
       >
         <form onSubmit={handlePasswordSave} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">New Password</label>
               <div className="relative">
                 <input 
                   type={showNewPassword ? 'text' : 'password'}
                   required
                   value={newPassword}
                   onChange={e => handlePasswordChangeInput(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 p-2 pr-10 text-sm outline-none focus:border-blue-500"
+                  className="w-full rounded-md border border-gray-300 p-2 pr-10 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
                   placeholder="New password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300"
                   aria-label={showNewPassword ? 'Hide password' : 'Show password'}
                 >
                   {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -411,8 +413,8 @@ export default function EditProfilePage() {
             </div>
             
             {passwordErrors.length > 0 && (
-                <div className="text-xs text-red-600 space-y-1">
-                    <p className="font-semibold text-gray-700">Password requirements:</p>
+                <div className="text-xs text-red-600 space-y-1 dark:text-red-300">
+                    <p className="font-semibold text-gray-700 dark:text-slate-200">Password requirements:</p>
                     <ul className="list-disc pl-4">
                         {passwordErrors.map((err, i) => (
                             <li key={i}>{err}</li>
@@ -422,20 +424,20 @@ export default function EditProfilePage() {
             )}
 
              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">Confirm New Password</label>
               <div className="relative">
                 <input 
                   type={showConfirmPassword ? 'text' : 'password'}
                   required
                   value={confirmNewPassword}
                   onChange={e => setConfirmNewPassword(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 p-2 pr-10 text-sm outline-none focus:border-blue-500"
+                  className="w-full rounded-md border border-gray-300 p-2 pr-10 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-400"
                   placeholder="Confirm new password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300"
                   aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                 >
                   {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -443,19 +445,19 @@ export default function EditProfilePage() {
               </div>
             </div>
 
-            {passwordSubmitError && <p className="text-sm text-red-600">{passwordSubmitError}</p>}
+            {passwordSubmitError && <p className="text-sm text-red-600 dark:text-red-300">{passwordSubmitError}</p>}
             <div className="flex justify-end gap-3 mt-6">
                 <button 
                   type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
                   disabled={loading || !newPassword || !confirmNewPassword || passwordErrors.length > 0}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-full disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 rounded-full disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                 >
                   {loading ? 'Saving...' : 'Save'}
                 </button>

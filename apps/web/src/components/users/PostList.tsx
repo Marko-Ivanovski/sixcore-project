@@ -474,16 +474,16 @@ export function PostList({ username, type = 'user' }: PostListProps) {
   }, [fetchPosts, hasMore, hasUserScrolled, loading]);
 
   if (loading && posts.length === 0) {
-    return <div className="text-center py-10 text-gray-500">Loading posts...</div>;
+    return <div className="text-center py-10 text-gray-500 dark:text-slate-400">Loading posts...</div>;
   }
 
   if (error && posts.length === 0) {
-    return <div className="text-center py-10 text-red-500">{error}</div>;
+    return <div className="text-center py-10 text-red-500 dark:text-red-300">{error}</div>;
   }
 
   if (posts.length === 0) {
     return (
-      <div className="card text-center py-10 text-gray-500">
+      <div className="card text-center py-10 text-gray-500 dark:text-slate-400">
         No posts yet.
       </div>
     );
@@ -492,7 +492,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
   return (
     <div className="space-y-4">
       {actionError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
           {actionError}
         </div>
       )}
@@ -515,7 +515,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
         return (
           <div key={post.id} className="card p-6">
             {post.kind === 'RETWEET' && post.repostedBy && (
-              <div className="mb-3 flex items-center gap-2 text-xs font-medium text-gray-500">
+              <div className="mb-3 flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-slate-400">
                 <Repeat2 size={14} />
                 <Link
                   href={`/user/${post.repostedBy.username}`}
@@ -540,22 +540,22 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/user/${post.author.username}`}
-                    className="font-bold text-gray-900 truncate hover:underline"
+                    className="font-bold text-gray-900 truncate hover:underline dark:text-slate-100"
                   >
                     {post.author.displayName || post.author.username}
                   </Link>
                   <Link
                     href={`/user/${post.author.username}`}
-                    className="text-sm text-gray-500 truncate hover:underline"
+                    className="text-sm text-gray-500 truncate hover:underline dark:text-slate-400"
                   >
                     @{post.author.username}
                   </Link>
-                  <span className="text-sm text-gray-400">|</span>
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-gray-400 dark:text-slate-500">|</span>
+                  <span className="text-sm text-gray-400 dark:text-slate-500">
                     {new Date(post.createdAt).toLocaleDateString()}
                   </span>
                   {post.visibility === 'PRIVATE' && (
-                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                    <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 dark:bg-slate-800 dark:text-slate-200">
                       <Lock size={12} />
                       Private
                     </span>
@@ -566,7 +566,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                         <button
                           type="button"
                           onClick={cancelEditing}
-                          className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                          className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                         >
                           Cancel
                         </button>
@@ -574,7 +574,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                         <button
                           type="button"
                           onClick={() => startEditing(post)}
-                          className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                          className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
                         >
                           Edit
                         </button>
@@ -609,17 +609,17 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                           [post.id]: event.target.value,
                         }))
                       }
-                      className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60"
+                      className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       rows={3}
                       maxLength={280}
                       disabled={isSaving}
                     />
-                    {editError && <p className="text-xs text-red-600">{editError}</p>}
+                    {editError && <p className="text-xs text-red-600 dark:text-red-300">{editError}</p>}
                     <div className="flex items-center justify-end">
                       <button
                         type="submit"
                         disabled={isSaving}
-                        className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
+                        className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                       >
                         {isSaving ? 'Saving...' : 'Save'}
                       </button>
@@ -627,7 +627,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                   </form>
                 ) : (
                   post.content && (
-                    <p className="mt-2 text-gray-800 whitespace-pre-wrap">
+                    <p className="mt-2 text-gray-800 whitespace-pre-wrap dark:text-slate-100">
                       {post.content}
                     </p>
                   )
@@ -639,14 +639,14 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                     <img
                       src={post.imageUrl}
                       alt="Post content"
-                      className="rounded-lg max-h-96 object-cover bg-gray-100"
+                      className="rounded-lg max-h-96 object-cover bg-gray-100 dark:bg-slate-900"
                     />
                   </div>
                 )}
 
-                <div className="mt-4 flex items-center space-x-6 text-gray-500 text-sm">
+                <div className="mt-4 flex items-center space-x-6 text-gray-500 text-sm dark:text-slate-400">
                   <div
-                    className="flex items-center space-x-1 text-gray-500"
+                    className="flex items-center space-x-1 text-gray-500 dark:text-slate-400"
                     aria-label="Comments"
                   >
                     <MessageCircle size={16} />
@@ -654,7 +654,9 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                   </div>
                   <button
                     className={`flex items-center space-x-1 transition-colors ${
-                      post.retweetedByMe ? 'text-green-600' : 'hover:text-green-500'
+                      post.retweetedByMe
+                        ? 'text-green-600 dark:text-emerald-400'
+                        : 'hover:text-green-500 dark:hover:text-emerald-400'
                     } ${pendingFlags.retweet ? 'opacity-60' : ''}`}
                     type="button"
                     aria-label="Retweets"
@@ -667,7 +669,9 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                   </button>
                   <button
                     className={`flex items-center space-x-1 transition-colors ${
-                      post.likedByMe ? 'text-red-500' : 'hover:text-red-500'
+                      post.likedByMe
+                        ? 'text-red-500 dark:text-red-400'
+                        : 'hover:text-red-500 dark:hover:text-red-400'
                     } ${pendingFlags.like ? 'opacity-60' : ''}`}
                     type="button"
                     aria-label="Likes"
@@ -680,7 +684,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                   </button>
                 </div>
 
-                <div className="mt-4 space-y-3 text-sm text-gray-600">
+                <div className="mt-4 space-y-3 text-sm text-gray-600 dark:text-slate-300">
                   {comments.length > 0 && (
                     <div className="space-y-3">
                       {comments.map((comment) => {
@@ -695,28 +699,28 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                         return (
                           <div
                             key={comment.id}
-                            className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                            className="rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-slate-800 dark:bg-slate-900/80"
                           >
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-slate-400">
                               {comment.author.displayName || comment.author.username} @
                               {comment.author.username}
                             </div>
-                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">
+                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap dark:text-slate-100">
                               {comment.content}
                             </p>
 
                             {replies.length > 0 && (
-                              <div className="mt-2 space-y-2 border-l border-gray-200 pl-3">
+                              <div className="mt-2 space-y-2 border-l border-gray-200 pl-3 dark:border-slate-700">
                                 {replies.map((reply) => (
                                   <div
                                     key={reply.id}
-                                    className="rounded-md bg-white px-2 py-1"
+                                    className="rounded-md bg-white px-2 py-1 dark:bg-slate-900"
                                   >
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500 dark:text-slate-400">
                                       {reply.author.displayName || reply.author.username} @
                                       {reply.author.username}
                                     </div>
-                                    <p className="mt-0.5 text-sm text-gray-800 whitespace-pre-wrap">
+                                    <p className="mt-0.5 text-sm text-gray-800 whitespace-pre-wrap dark:text-slate-100">
                                       {reply.content}
                                     </p>
                                   </div>
@@ -741,35 +745,35 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                                     }))
                                   }
                                   placeholder="Write a reply..."
-                                  className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60"
+                                  className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                                   rows={2}
                                   maxLength={100}
                                   disabled={replyLimitReached || isReplying}
                                 />
                                 {replyError && (
-                                  <p className="text-xs text-red-600">{replyError}</p>
+                                  <p className="text-xs text-red-600 dark:text-red-300">{replyError}</p>
                                 )}
                                 <div className="flex items-center justify-between">
                                   {replyLimitReached ? (
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-gray-500 dark:text-slate-400">
                                       Reply limit reached.
                                     </span>
                                   ) : (
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-gray-500 dark:text-slate-400">
                                       {replyCount} repl{replyCount === 1 ? 'y' : 'ies'}
                                     </span>
                                   )}
                                   <button
                                     type="submit"
                                     disabled={!replyHasText || isReplying || replyLimitReached}
-                                    className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
+                                    className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                                   >
                                     {isReplying ? 'Replying...' : 'Reply'}
                                   </button>
                                 </div>
                               </form>
                             ) : (
-                              <p className="mt-2 text-xs text-gray-500">
+                              <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
                                 Log in to reply.
                               </p>
                             )}
@@ -796,33 +800,33 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                           }))
                         }
                         placeholder="Add a comment..."
-                        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60"
+                        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                         rows={2}
                         maxLength={100}
                         disabled={commentLimitReached || isCommenting}
                       />
-                      {commentError && <p className="text-xs text-red-600">{commentError}</p>}
+                      {commentError && <p className="text-xs text-red-600 dark:text-red-300">{commentError}</p>}
                       <div className="flex items-center justify-between">
                         {commentLimitReached ? (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:text-slate-400">
                             Comment limit reached.
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:text-slate-400">
                             {comments.length} of {maxCommentsPerPost} comments
                           </span>
                         )}
                         <button
                           type="submit"
                           disabled={!commentHasText || isCommenting || commentLimitReached}
-                          className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
+                          className="rounded-full bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                         >
                           {isCommenting ? 'Posting...' : 'Comment'}
                         </button>
                       </div>
                     </form>
                   ) : (
-                    <p className="text-xs text-gray-500">Log in to comment.</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Log in to comment.</p>
                   )}
                 </div>
               </div>
@@ -834,7 +838,7 @@ export function PostList({ username, type = 'user' }: PostListProps) {
       {hasMore && (
         <div
           ref={loadMoreRef}
-          className="flex justify-center pt-4 text-sm text-gray-500"
+          className="flex justify-center pt-4 text-sm text-gray-500 dark:text-slate-400"
         >
           {loading ? (
             <div className="flex items-center gap-2">
