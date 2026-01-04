@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Heart, Lock, MessageCircle, Repeat2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
@@ -16,9 +16,10 @@ import {
   updatePost,
 } from '@/lib/posts';
 import { buildAvatarUrl, setAvatarFallback } from '@/utils/avatar';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface PostListProps {
-  username?: string; // Optional: if type is 'user'
+  username?: string; 
   type?: 'user' | 'timeline' | 'following';
 }
 
@@ -27,7 +28,6 @@ export function PostList({ username, type = 'user' }: PostListProps) {
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
-  const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pending, setPending] = useState<Record<string, { like?: boolean; retweet?: boolean }>>({});
@@ -42,9 +42,14 @@ export function PostList({ username, type = 'user' }: PostListProps) {
   const [editErrors, setEditErrors] = useState<Record<string, string | null>>({});
   const [editPending, setEditPending] = useState<Record<string, boolean>>({});
   const [deletePending, setDeletePending] = useState<Record<string, boolean>>({});
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const isFetchingRef = useRef(false);
+  const [hasUserScrolled, setHasUserScrolled] = useState(false);
+  const offsetRef = useRef(0);
 
   const maxCommentsPerPost = 10;
   const maxRepliesPerComment = 5;
+  const pageSize = 10;
 
   const getTargetId = (post: PostItem) =>
     post.targetPostId || post.originalPostId || post.id;
@@ -368,18 +373,24 @@ export function PostList({ username, type = 'user' }: PostListProps) {
     }
   };
 
-  const fetchPosts = async (reset = false) => {
+  const fetchPosts = useCallback(async (reset = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     setLoading(true);
     try {
-      const currentOffset = reset ? 0 : offset;
+      if (reset) {
+        offsetRef.current = 0;
+      }
+
+      const currentOffset = offsetRef.current;
       let response;
 
       if (type === 'user' && username) {
-        response = await getUserPosts(username, 20, currentOffset);
+        response = await getUserPosts(username, pageSize, currentOffset);
       } else if (type === 'following') {
-        response = await getTimeline(20, currentOffset, 'following');
+        response = await getTimeline(pageSize, currentOffset, 'following');
       } else {
-        response = await getTimeline(20, currentOffset, 'all');
+        response = await getTimeline(pageSize, currentOffset, 'all');
       }
 
       if (reset) {
@@ -389,20 +400,78 @@ export function PostList({ username, type = 'user' }: PostListProps) {
       }
 
       setHasMore(response.hasMore);
-      setOffset(currentOffset + response.items.length);
+      offsetRef.current = currentOffset + response.items.length;
       setError(null);
     } catch (err) {
       setError('Failed to load posts');
       console.error(err);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, [pageSize, type, username]);
 
   useEffect(() => {
     fetchPosts(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, type]);
+
+  useEffect(() => {
+    if (hasUserScrolled) return;
+
+    const handleScroll = () => {
+      if (window.scrollY > 0) {
+        setHasUserScrolled(true);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasUserScrolled]);
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || !hasMore) return;
+
+    if (!('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (
+          entry.isIntersecting &&
+          hasUserScrolled &&
+          !loading &&
+          !isFetchingRef.current
+        ) {
+          fetchPosts();
+        }
+      },
+      { rootMargin: '50px' },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchPosts, hasMore, hasUserScrolled, loading]);
+
+  useEffect(() => {
+    if (!hasMore) return;
+
+    const handleScroll = () => {
+      if (!hasUserScrolled || loading || isFetchingRef.current) return;
+
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const viewportHeight = window.innerHeight;
+
+      if (scrollTop + viewportHeight >= scrollHeight - 50) {
+        fetchPosts();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [fetchPosts, hasMore, hasUserScrolled, loading]);
 
   if (loading && posts.length === 0) {
     return <div className="text-center py-10 text-gray-500">Loading posts...</div>;
@@ -763,14 +832,18 @@ export function PostList({ username, type = 'user' }: PostListProps) {
       })}
 
       {hasMore && (
-        <div className="text-center pt-4">
-          <button
-            onClick={() => fetchPosts()}
-            disabled={loading}
-            className="text-blue-600 hover:text-blue-500 font-medium disabled:opacity-50"
-          >
-            {loading ? 'Loading more...' : 'Load more'}
-          </button>
+        <div
+          ref={loadMoreRef}
+          className="flex justify-center pt-4 text-sm text-gray-500"
+        >
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <LoadingSpinner size="sm" />
+              Loading more...
+            </div>
+          ) : (
+            <span>Scroll to load more</span>
+          )}
         </div>
       )}
     </div>
