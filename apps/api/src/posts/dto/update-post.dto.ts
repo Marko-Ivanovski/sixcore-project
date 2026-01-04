@@ -9,7 +9,7 @@ export class UpdatePostDto {
 
   @IsOptional()
   @IsString()
-  imageUrl?: string;
+  imageUrl?: string | null;
 
   @IsOptional()
   @IsEnum(PostVisibility)

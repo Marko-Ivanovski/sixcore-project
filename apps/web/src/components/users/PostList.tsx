@@ -15,6 +15,7 @@ import {
   unretweetPost,
   updatePost,
 } from '@/lib/posts';
+import { uploadImage, validateImageFile } from '@/lib/uploads';
 import { buildAvatarUrl, setAvatarFallback } from '@/utils/avatar';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
@@ -41,6 +42,10 @@ export function PostList({ username, type = 'user' }: PostListProps) {
   const [editDrafts, setEditDrafts] = useState<Record<string, string>>({});
   const [editErrors, setEditErrors] = useState<Record<string, string | null>>({});
   const [editPending, setEditPending] = useState<Record<string, boolean>>({});
+  const [editImageFiles, setEditImageFiles] = useState<Record<string, File | null>>({});
+  const [editImagePreviews, setEditImagePreviews] = useState<Record<string, string | null>>({});
+  const [editImageErrors, setEditImageErrors] = useState<Record<string, string | null>>({});
+  const [editImageRemovals, setEditImageRemovals] = useState<Record<string, boolean>>({});
   const [deletePending, setDeletePending] = useState<Record<string, boolean>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingRef = useRef(false);
@@ -81,6 +86,53 @@ export function PostList({ username, type = 'user' }: PostListProps) {
       return err.message || fallback;
     }
     return fallback;
+  };
+
+  const revokePreviewUrl = (preview?: string | null) => {
+    if (preview && preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview);
+    }
+  };
+
+  const clearEditImageState = (postId: string) => {
+    const preview = editImagePreviews[postId];
+    revokePreviewUrl(preview);
+    setEditImageFiles((prev) => ({ ...prev, [postId]: null }));
+    setEditImagePreviews((prev) => ({ ...prev, [postId]: null }));
+    setEditImageErrors((prev) => ({ ...prev, [postId]: null }));
+    setEditImageRemovals((prev) => ({ ...prev, [postId]: false }));
+  };
+
+  const handleEditImageChange = (
+    postId: string,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setEditImageErrors((prev) => ({ ...prev, [postId]: validationError }));
+      event.target.value = '';
+      return;
+    }
+
+    revokePreviewUrl(editImagePreviews[postId]);
+    setEditImageFiles((prev) => ({ ...prev, [postId]: file }));
+    setEditImagePreviews((prev) => ({
+      ...prev,
+      [postId]: URL.createObjectURL(file),
+    }));
+    setEditImageErrors((prev) => ({ ...prev, [postId]: null }));
+    setEditImageRemovals((prev) => ({ ...prev, [postId]: false }));
+  };
+
+  const handleEditImageRemove = (postId: string) => {
+    revokePreviewUrl(editImagePreviews[postId]);
+    setEditImageFiles((prev) => ({ ...prev, [postId]: null }));
+    setEditImagePreviews((prev) => ({ ...prev, [postId]: null }));
+    setEditImageErrors((prev) => ({ ...prev, [postId]: null }));
+    setEditImageRemovals((prev) => ({ ...prev, [postId]: true }));
   };
 
   const handleLikeToggle = async (post: PostItem) => {
@@ -290,17 +342,26 @@ export function PostList({ username, type = 'user' }: PostListProps) {
   };
 
   const startEditing = (post: PostItem) => {
+    revokePreviewUrl(editImagePreviews[post.id]);
     setEditingPostId(post.id);
     setEditDrafts((prev) => ({
       ...prev,
       [post.id]: post.content ?? '',
     }));
     setEditErrors((prev) => ({ ...prev, [post.id]: null }));
+    setEditImageFiles((prev) => ({ ...prev, [post.id]: null }));
+    setEditImagePreviews((prev) => ({
+      ...prev,
+      [post.id]: post.imageUrl ?? null,
+    }));
+    setEditImageErrors((prev) => ({ ...prev, [post.id]: null }));
+    setEditImageRemovals((prev) => ({ ...prev, [post.id]: false }));
   };
 
   const cancelEditing = () => {
     if (editingPostId) {
       setEditErrors((prev) => ({ ...prev, [editingPostId]: null }));
+      clearEditImageState(editingPostId);
     }
     setEditingPostId(null);
   };
@@ -312,7 +373,12 @@ export function PostList({ username, type = 'user' }: PostListProps) {
     }
 
     const draft = (editDrafts[post.id] ?? '').trim();
-    if (!draft && !post.imageUrl) {
+    const imageFile = editImageFiles[post.id] ?? null;
+    const imageRemoved = editImageRemovals[post.id] ?? false;
+    const hasImageAfterEdit =
+      Boolean(imageFile) || (!imageRemoved && Boolean(post.imageUrl));
+
+    if (!draft && !hasImageAfterEdit) {
       setEditErrors((prev) => ({
         ...prev,
         [post.id]: 'Content or image is required.',
@@ -325,13 +391,25 @@ export function PostList({ username, type = 'user' }: PostListProps) {
     setEditPending((prev) => ({ ...prev, [post.id]: true }));
 
     try {
-      const updated = await updatePost(post.id, { content: draft });
+      const payload: { content?: string; imageUrl?: string | null } = {
+        content: draft,
+      };
+
+      if (imageFile) {
+        const imageUrl = await uploadImage(imageFile, 'tweets');
+        payload.imageUrl = imageUrl;
+      } else if (imageRemoved) {
+        payload.imageUrl = null;
+      }
+
+      const updated = await updatePost(post.id, payload);
       updatePostsByTargetId(updated.targetPostId, (current) => ({
         ...current,
         content: updated.content,
         imageUrl: updated.imageUrl,
         visibility: updated.visibility,
       }));
+      clearEditImageState(post.id);
       setEditingPostId(null);
     } catch (err) {
       setEditErrors((prev) => ({
@@ -511,6 +589,10 @@ export function PostList({ username, type = 'user' }: PostListProps) {
         const editError = editErrors[post.id];
         const isSaving = editPending[post.id];
         const isDeleting = deletePending[post.id];
+        const editImagePreview = (editImageRemovals[post.id] ?? false)
+          ? null
+          : editImagePreviews[post.id] ?? post.imageUrl;
+        const editImageError = editImageErrors[post.id];
 
         return (
           <div key={post.id} className="card p-6">
@@ -614,6 +696,41 @@ export function PostList({ username, type = 'user' }: PostListProps) {
                       maxLength={280}
                       disabled={isSaving}
                     />
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-slate-400">
+                      <label className="cursor-pointer rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                        {editImagePreview ? 'Change image' : 'Add image'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={isSaving}
+                          onChange={(event) => handleEditImageChange(post.id, event)}
+                        />
+                      </label>
+                      {editImagePreview && (
+                        <button
+                          type="button"
+                          onClick={() => handleEditImageRemove(post.id)}
+                          className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
+                          disabled={isSaving}
+                        >
+                          Remove image
+                        </button>
+                      )}
+                      {editImageError && (
+                        <span className="text-xs text-red-600 dark:text-red-300">{editImageError}</span>
+                      )}
+                    </div>
+                    {editImagePreview && (
+                      <div className="mt-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-900">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={editImagePreview}
+                          alt="Edited post image"
+                          className="max-h-80 w-full object-cover"
+                        />
+                      </div>
+                    )}
                     {editError && <p className="text-xs text-red-600 dark:text-red-300">{editError}</p>}
                     <div className="flex items-center justify-end">
                       <button

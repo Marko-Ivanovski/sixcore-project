@@ -21,6 +21,7 @@ export default function EditProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(user?.avatarUrl || null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
 
   // Sync state with user data when it loads
   useEffect(() => {
@@ -73,6 +74,29 @@ export default function EditProfilePage() {
   const uploadAvatar = async (): Promise<string | null> => {
     if (!avatarFile) return null;
     return uploadImage(avatarFile, 'avatars');
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!previewUrl || removingAvatar) return;
+    setRemovingAvatar(true);
+    setMessage(null);
+
+    try {
+      await updateProfile({ avatarUrl: null });
+      if (previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setAvatarFile(null);
+      setPreviewUrl(null);
+      setAvatarError(null);
+      await refreshUser();
+      setMessage({ type: 'success', text: 'Profile photo removed successfully' });
+    } catch (err: any) {
+      console.error(err);
+      setMessage({ type: 'error', text: err.message || 'Failed to remove profile photo' });
+    } finally {
+      setRemovingAvatar(false);
+    }
   };
 
   const handleProfileSave = async (e: React.FormEvent) => {
@@ -177,6 +201,8 @@ export default function EditProfilePage() {
     }
   };
 
+  const hasAvatar = Boolean(previewUrl);
+
   const content = user ? (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="mb-6 text-3xl font-bold text-gray-900 dark:text-slate-100">Edit Profile</h1>
@@ -240,10 +266,22 @@ export default function EditProfilePage() {
                       </div>
                     )}
                   </div>
-                  <label className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-                    Change Photo
-                    <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
-                  </label>
+                  <div className="flex flex-col gap-2">
+                    <label className="cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                      Change Photo
+                      <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                    </label>
+                    {hasAvatar && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        disabled={removingAvatar || loading}
+                        className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 shadow-sm transition hover:bg-red-100 disabled:opacity-60 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/60"
+                      >
+                        {removingAvatar ? 'Removing...' : 'Remove Photo'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {avatarError && <p className="mt-2 text-xs text-red-600 dark:text-red-300">{avatarError}</p>}
               </div>

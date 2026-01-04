@@ -31,7 +31,7 @@ export async function addComment(
 
 export async function updatePost(
   postId: string,
-  data: { content?: string; imageUrl?: string; visibility?: 'PUBLIC' | 'PRIVATE' },
+  data: { content?: string; imageUrl?: string | null },
 ): Promise<PostItem> {
   return apiFetch<PostItem>(`/api/posts/${postId}`, {
     method: 'PATCH',

@@ -125,7 +125,7 @@ export interface UpdateProfileInput {
   password?: string;
   displayName?: string;
   bio?: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
 }
 
 export async function updateProfile(data: UpdateProfileInput): Promise<UserProfile> {

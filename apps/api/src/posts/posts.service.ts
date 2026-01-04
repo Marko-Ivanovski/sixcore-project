@@ -383,7 +383,11 @@ export class PostsService {
     const content =
       typeof dto.content === 'string' ? dto.content.trim() : undefined;
     const imageUrl =
-      typeof dto.imageUrl === 'string' ? dto.imageUrl.trim() : undefined;
+      dto.imageUrl === null
+        ? null
+        : typeof dto.imageUrl === 'string'
+          ? dto.imageUrl.trim()
+          : undefined;
 
     const data: Prisma.PostUpdateInput = {};
     if (dto.content !== undefined) {
