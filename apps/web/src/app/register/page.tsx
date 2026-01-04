@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { ApiError, registerUser } from '../../lib/auth';
 import { checkPasswordStrength } from '@/utils/validation';
 
@@ -13,6 +14,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
@@ -102,18 +104,28 @@ export default function RegisterPage() {
           </label>
           <label className="block text-sm font-medium text-gray-800">
             Password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => handlePasswordChange(event.target.value)}
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:bg-white ${
-                passwordErrors.length > 0 && password.length > 0 ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-gray-400'
-              }`}
-              placeholder="At least 8 characters"
-              autoComplete="new-password"
-              required
-              minLength={8}
-            />
+            <div className="relative mt-1">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(event) => handlePasswordChange(event.target.value)}
+                className={`w-full rounded-lg border px-3 py-2 pr-10 text-sm outline-none transition focus:bg-white ${
+                  passwordErrors.length > 0 && password.length > 0 ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-gray-400'
+                }`}
+                placeholder="At least 8 characters"
+                autoComplete="new-password"
+                required
+                minLength={8}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </label>
           
           {passwordErrors.length > 0 && password.length > 0 && (

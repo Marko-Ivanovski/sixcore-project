@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { updateProfile } from '@/lib/users';
 import { Modal } from '@/components/ui/Modal';
@@ -44,6 +45,8 @@ export default function EditProfilePage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [passwordSubmitError, setPasswordSubmitError] = useState<string | null>(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Handlers
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -387,14 +390,24 @@ export default function EditProfilePage() {
         <form onSubmit={handlePasswordSave} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-              <input 
-                type="password"
-                required
-                value={newPassword}
-                onChange={e => handlePasswordChangeInput(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500"
-                placeholder="New password"
-              />
+              <div className="relative">
+                <input 
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  value={newPassword}
+                  onChange={e => handlePasswordChangeInput(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 p-2 pr-10 text-sm outline-none focus:border-blue-500"
+                  placeholder="New password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                  aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             
             {passwordErrors.length > 0 && (
@@ -410,14 +423,24 @@ export default function EditProfilePage() {
 
              <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-              <input 
-                type="password"
-                required
-                value={confirmNewPassword}
-                onChange={e => setConfirmNewPassword(e.target.value)}
-                className="w-full rounded-md border border-gray-300 p-2 text-sm outline-none focus:border-blue-500"
-                placeholder="Confirm new password"
-              />
+              <div className="relative">
+                <input 
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  value={confirmNewPassword}
+                  onChange={e => setConfirmNewPassword(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 p-2 pr-10 text-sm outline-none focus:border-blue-500"
+                  placeholder="Confirm new password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             {passwordSubmitError && <p className="text-sm text-red-600">{passwordSubmitError}</p>}
