@@ -47,6 +47,16 @@ body {
     var(--background);
 }
 
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
 .app-shell {
   min-height: 100vh;
   background: var(--background);

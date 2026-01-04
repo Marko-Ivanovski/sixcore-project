@@ -32,8 +32,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const applyTheme = useCallback((next: Theme) => {
     setThemeState(next);
     if (typeof document !== 'undefined') {
-      document.documentElement.classList.toggle('dark', next === 'dark');
-      document.documentElement.style.colorScheme = next;
+      const root = document.documentElement;
+      root.classList.add('theme-switching');
+      root.classList.toggle('dark', next === 'dark');
+      root.style.colorScheme = next;
+      window.setTimeout(() => {
+        root.classList.remove('theme-switching');
+      }, 50);
     }
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('theme', next);
