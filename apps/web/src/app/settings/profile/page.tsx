@@ -7,6 +7,7 @@ import { updateProfile } from '@/lib/users';
 import { Modal } from '@/components/ui/Modal';
 import { checkPasswordStrength } from '@/utils/validation';
 import { uploadImage, validateImageFile } from '@/lib/uploads';
+import { RequireAuth } from '@/components/RequireAuth';
 
 export default function EditProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -176,11 +177,7 @@ export default function EditProfilePage() {
     }
   };
 
-  if (!user) {
-      return <div className="p-8 text-center text-gray-600 dark:text-slate-300">Please log in.</div>;
-  }
-
-  return (
+  const content = user ? (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="mb-6 text-3xl font-bold text-gray-900 dark:text-slate-100">Edit Profile</h1>
       
@@ -465,5 +462,7 @@ export default function EditProfilePage() {
         </form>
       </Modal>
     </div>
-  );
+  ) : null;
+
+  return <RequireAuth>{content}</RequireAuth>;
 }

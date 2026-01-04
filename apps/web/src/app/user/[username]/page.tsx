@@ -38,24 +38,16 @@ export default function UserPage() {
     fetchProfile();
   }, [username]);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error || !user) {
-    return (
-      <div className="flex flex-col justify-center items-center min-h-[50vh] text-center">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4 dark:text-slate-100">404</h1>
-        <p className="text-xl text-gray-600 dark:text-slate-300">{error || 'User not found'}</p>
-      </div>
-    );
-  }
-
-  return (
+  const content = loading ? (
+    <div className="flex justify-center items-center min-h-[50vh]">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  ) : error || !user ? (
+    <div className="flex flex-col justify-center items-center min-h-[50vh] text-center">
+      <h1 className="text-4xl font-bold text-gray-800 mb-4 dark:text-slate-100">404</h1>
+      <p className="text-xl text-gray-600 dark:text-slate-300">{error || 'User not found'}</p>
+    </div>
+  ) : (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <UserProfile user={user} />
       <div className="mt-8">
@@ -64,4 +56,6 @@ export default function UserPage() {
       </div>
     </div>
   );
+
+  return content;
 }
