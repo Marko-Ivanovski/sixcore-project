@@ -58,3 +58,6 @@ coverage/
 /helpers/*
 helpers/
 AGENTS.md
+/images/*
+images/
+/images
