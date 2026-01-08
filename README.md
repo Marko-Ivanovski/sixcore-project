@@ -35,7 +35,8 @@ A simplified Twitter-style social feed built with Next.js, NestJS, and Postgres.
 
 ## Running Locally (Docker)
 
-1. Copy `.env.example` to `.env` and adjust values if needed.
+1. Create a `.env` file in the repo root.
+2. Copy `.env.example` to `.env` and adjust values if needed.
     ```
     # Database
     POSTGRES_USER=postgres
@@ -55,5 +56,18 @@ A simplified Twitter-style social feed built with Next.js, NestJS, and Postgres.
     WEB_PORT=3000
     NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
     ```
-2. From the repo root, run `docker compose up --build`.
-3. Open `http://localhost:3000` for the web app and `http://localhost:3001/api` for the API.
+3. Make sure Docker Desktop (or the Docker Engine) is running in the background.
+4. From the repo root, run `docker compose up --build`.
+5. Open `http://localhost:3000` for the web app and `http://localhost:3001/api` for the API.
+6. To get started in the web app, the user first should create an account and login (without that, only 'Public' posts can be seen in the home page). 
+
+## Media Folder
+
+In the `/media` folder in the root repo is a simple video showcasing all of the features and implementations, alongside screenshots of the database and how things are stored. The mistakes and corrections in the video were intentional to showcase validation (example wrong credentials, or unsafe password). 
+
+## Potential Future Improvements
+
+- Notification Inbox System
+- Private/Public Profiles (something like Instagram)
+- Messaging 
+- Uploading videos on tweets
